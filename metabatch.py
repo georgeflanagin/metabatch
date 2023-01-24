@@ -128,19 +128,39 @@ def metabatch_main(myargs:argparse.Namespace) -> int:
 
     submissions = fifo.FIFO(myargs.fifo)
 
-    linuxutils.daemonize_me()
+    not myargs.debug and linuxutils.daemonize_me()
     
     return metabatch_events(submissions)
 
 
 if __name__ == '__main__':
 
+    parser = argparse.ArgumentParser(prog="metabatch", 
+        description="What metabatch does, metabatch does best.")
+
+    parser.add_argument('-c', '--config-dir', type=str, default="/etc/metabatch.d",
+        help="Input file name.")
+    parser.add_argument('-d', '--debug', action='store_true', 
+        help="Run program interactively for debugging purposes.")
+    parser.add_argument('-f', '--fifo', type=str, default="/usr/local/metabatch/queue",
+        help="Name of the FIFO where SLURM jobs are submitted.")
+    parser.add_argument('-o', '--output', type=str, default="",
+        help="Name of the output (logging) file.")
+    parser.add_argument('-v', '--verbose', type=str, 
+        choices=('CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG', 'NOTSET'),
+        default='ERROR',
+        help="Be chatty or not at the corresponding log level.")
+
+
+    myargs = parser.parse_args()
+    verbose = myargs.verbose
+
     ###
     # If we are running the program from the command line, then it
     # is useful to have ctrl-C interrupt the program. Same if we
     # logoff.
     ###
-    if os.isatty(0):
+    if myargs.debug:
         caught_signals.remove(signal.SIGINT)
         caught_signals.remove(signal.SIGHUP)
 
@@ -152,24 +172,10 @@ if __name__ == '__main__':
         else:
             sys.stderr.write(f'signal {_} is being handled.\n')
     
-    parser = argparse.ArgumentParser(prog="metabatch", 
-        description="What metabatch does, metabatch does best.")
-
-    parser.add_argument('-c', '--config-dir', type=str, default="/etc/metabatch.d",
-        help="Input file name.")
-    parser.add_argument('-f', '--fifo', type=str, default="/usr/local/metabatch/queue",
-        help="Name of the FIFO where SLURM jobs are submitted.")
-    parser.add_argument('-v', '--verbose', type=str, 
-        choices=('CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG', 'NOTSET'),
-        default='ERROR',
-        help="Be chatty or not at the corresponding log level.")
-
-
-    myargs = parser.parse_args()
-    verbose = myargs.verbose
-
     try:
-        sys.exit(globals()[f"{os.path.basename(__file__)[:-3]}_main"](myargs))
+        outfile = sys.stdout if not myargs.output else open(myargs.output, 'w')
+        with contextlib.redirect_stderr(outfile):
+            sys.exit(globals()[f"{os.path.basename(__file__)[:-3]}_main"](myargs))
 
     except Exception as e:
         print(f"Escaped or re-raised exception: {e}")
