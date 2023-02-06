@@ -50,6 +50,7 @@ from   urdecorators import trap
 ###
 # imports and objects that are a part of this project
 ###
+from   metabatchlib import examine_job
 
 ###
 # Globals
@@ -108,7 +109,18 @@ def metabatch_events(submissions:fifo.FIFO) -> int:
         # Wait a day for someone to submit .. something.
         jobs = submissions(60*60*24) 
         event_logger.debug(jobs)
+        found_stop_event = 'STOP' in jobs
         
+        # Do a safety fork to ensure that examinations of submitted
+        # jobs do not interfere with each other.
+        for job_name in jobs:
+            if (pid := os.fork()):
+                continue
+
+            examine_job(job_name)
+        
+    fileutils.fclose_all()
+    event_logger.info("All files closed.")
     return os.EX_OK
 
 
@@ -154,6 +166,7 @@ if __name__ == '__main__':
 
     myargs = parser.parse_args()
     verbose = myargs.verbose
+    linuxutils.dump_cmdline(myargs)
 
     ###
     # If we are running the program from the command line, then it
@@ -179,4 +192,11 @@ if __name__ == '__main__':
 
     except Exception as e:
         print(f"Escaped or re-raised exception: {e}")
+
+    finally:
+        mylogger = logging.getLogger('metabatch')
+        mylogger.setLevel(myargs.verbose)
+        mylogger.info(f"PID {os.getpid()} terminated.")
+
+        
 
