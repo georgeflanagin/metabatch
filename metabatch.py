@@ -65,6 +65,7 @@ caught_signals = [
     signal.SIGRTMIN+1 ]
 
 myargs = None
+mycwd = os.getcwd()
 mynetid = getpass.getuser()
 verbose = False
 
@@ -78,11 +79,11 @@ def handler(signum:int, stack:object=None) -> None:
     handler_logger = logging.getLogger('metabatch').getChild('handler')
     handler_logger.setLevel(myargs.verbose)
 
-    if signum in tuple(signal.SIGHUP, signal.SIGUSR1):
+    if signum in {signal.SIGHUP, signal.SIGUSR1}:
         handler_logger.debug('Rereading all configuration files.')
         metabatch_main(myargs)
 
-    elif signum in tuple(signal.SIGUSR2, signal.SIGQUIT, signal.SIGTERM, signal.SIGINT):
+    elif signum in {signal.SIGUSR2, signal.SIGQUIT, signal.SIGTERM, signal.SIGINT}:
         handler_logger.debug('Closing up.')
         uu.fclose_all()
         sys.exit(os.EX_OK)
@@ -117,7 +118,7 @@ def metabatch_events(submissions:fifo.FIFO) -> int:
             if (pid := os.fork()):
                 continue
 
-            examine_job(job_name)
+            examine_job(job_name, mynetid)
         
     fileutils.fclose_all()
     event_logger.info("All files closed.")
@@ -129,6 +130,8 @@ def metabatch_main(myargs:argparse.Namespace) -> int:
     """
     Do a little setup, and then start the program as a daemon.
     """
+    global mycwd
+
     mylogger = logging.getLogger('metabatch')
     mylogger.setLevel(myargs.verbose)
 
@@ -138,10 +141,11 @@ def metabatch_main(myargs:argparse.Namespace) -> int:
     for filename in fileutils.all_files_in(myargs.config_dir):
         config.update(p.read(filename))
 
-    submissions = fifo.FIFO(myargs.fifo)
+    submissions = fifo.FIFO(myargs.fifo, delimiter='%', ignore='##')
 
     not myargs.debug and linuxutils.daemonize_me()
-    
+    os.chdir(mycwd)    
+
     return metabatch_events(submissions)
 
 
@@ -185,6 +189,21 @@ if __name__ == '__main__':
         else:
             sys.stderr.write(f'signal {_} is being handled.\n')
     
+    our_directory=f"/usr/local/metabatch"
+    os.makedirs(our_directory, mode=0o755, exist_ok=True)
+
+    my_logger = logging.getLogger('metabatch')
+    my_logger.setLevel(myargs.verbose)
+
+    log_handler = logging.FileHandler(f'{our_directory}/logfile', 'a')
+    log_handler.setLevel(myargs.verbose)
+
+    log_formatter = logging.Formatter('%(asctime)s - %(name)s%(levelname)s: %(message)s', 
+        datefmt='%m/%d/%Y %I:%M:%S%p')
+    log_handler.setFormatter(log_formatter)
+
+    my_logger.addHandler(log_formatter)
+
     try:
         outfile = sys.stdout if not myargs.output else open(myargs.output, 'w')
         with contextlib.redirect_stderr(outfile):

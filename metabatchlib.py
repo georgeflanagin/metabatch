@@ -20,7 +20,7 @@ import argparse
 import contextlib
 import getpass
 mynetid = getpass.getuser()
-import logger
+import logging
 
 ###
 # From hpclib
@@ -31,6 +31,11 @@ from   urdecorators import trap
 ###
 # imports and objects that are a part of this project
 ###
+
+###
+# Global objects.
+###
+mynetid = getpass.getuser()
 verbose = False
 
 ###
@@ -45,7 +50,8 @@ __email__ = ['hpc@richmond.edu']
 __status__ = 'in progress'
 __license__ = 'MIT'
 
-event_logger = logging.getLogger('metabatch').getChild('examiner')
+event_logger = logging.getLogger('metabatch')
+
 
 @trap
 def examine_job(jobfile:str, netid:str) -> None:
@@ -54,9 +60,9 @@ def examine_job(jobfile:str, netid:str) -> None:
     the job file using business rules that are unavailable to SLURM.
     """
 
-    if (cards := read_jobfile(jobfile) is None):
+    jobfile = jobfile.strip()
+    if (cards := read_jobfile_with_line_numbers(jobfile, mynetid) is None):
         os._exit(os.EX_NOINPUT)
-
 
     slurm_lines = get_slurm_lines(cards)
     event_logger.debug(f"{slurm_lines=}")
@@ -72,11 +78,11 @@ def get_slurm_lines(cards:dict) -> dict:
     """
     Filter the dictionary on lines that start with #SBATCH
     """
-    return {k:v for k, v in dict.items() if v.startswith('#SBATCH')}
+    return {k:v for k, v in cards.items() if v.startswith('#SBATCH')}
 
 
 @trap
-def read_jobfile(jobfile:str, netid:str) -> dict:
+def read_jobfile_with_line_numbers(jobfile:str, netid:str) -> dict:
     """
     return the contents as a dict by line number. If
     the file cannot be read (or does not exist) return None.
@@ -104,4 +110,5 @@ def rebuild_jobfile(cards:dict) -> str:
 
 
 @trap
-def resubmit_jobfile(data:str, jobfile:str, netid:str) -> 
+def resubmit_jobfile(data:str, jobfile:str, netid:str) -> int:
+    return os.EX_OK
