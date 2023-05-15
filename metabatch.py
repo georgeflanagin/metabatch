@@ -123,14 +123,32 @@ def metabatch_main(myargs:argparse.Namespace) -> int:
     config = sloppytree.SloppyDict()
     p = configparser.ConfigParser()
 
-    for filename in fileutils.all_files_in(myargs.config_dir):
-        config.update(p.read(filename))
+    #for filename in fileutils.all_files_in(myargs.config_dir):
+        #config.update(p.read(filename))
 
-    submissions = fifo.FIFO(myargs.fifo)
+    # traverse all the files and directories in config_dir and, if not empty, read them
+    if os.path.exists(myargs.config_dir):
+        if len(os.listdir(myargs.config_dir)) != 0:
+            for filename in fileutils.all_files_in(myargs.config_dir):
+            
+                with open(filename, 'r') as config_file:
+                    for line in config_file.readlines():
+                        mylogger.info("Reading configuration files")
+                        print(line)
+        
+        else:
+            mylogger.debug("Directory is empty. No configuration files were found")
+    else:
+        mylogger.error(f"Directory {myargs.config_dir} is not found")
+                
 
-    not myargs.debug and linuxutils.daemonize_me()
+
+
+    #submissions = fifo.FIFO(myargs.fifo)
+
+    #not myargs.debug and linuxutils.daemonize_me()
     
-    return metabatch_events(submissions)
+    #return metabatch_events(submissions)
 
 
 if __name__ == '__main__':
