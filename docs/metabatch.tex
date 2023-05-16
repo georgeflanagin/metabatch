@@ -1,0 +1,155 @@
+\documentclass[11pt,letterpaper,portrait]{article}
+\usepackage{urtechdoc}
+\usepackage{urfooter}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Choose one of these typefaces instead of computer modern (the default).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\usepackage{bera} % Clean text, formats well, photocopies well.
+%\usepackage{yfonts} % Blackletter Fraktur typeface.
+%\usepackage{libris} % Formats a little better than computer modern.
+%\usepackage{tgschola} % Great support for extended character sets.
+%\usepackage{venturisold} % Artful, old looking type.
+
+\usepackage[T1]{fontenc}
+
+
+\SetWatermarkText{DRAFT}
+\SetWatermarkFontSize{5cm}
+\SetWatermarkAngle{58}
+\SetWatermarkColor[gray]{0.97}
+
+\setlength{\parskip}{0.3em}
+\setlength{\parindent}{0.8em}
+\renewcommand{\baselinestretch}{1.0}
+\providecommand{\MB}{{\fontfamily{pzc}\selectfont \Large M\textsc{eta}B\textsc{atch}}\xspace}
+
+\title{\MB \\
+\large Preliminary Design}
+\author{George Flanagin}
+\date{Revision of \today}
+
+\begin{document}
+\maketitle
+
+\achtung{\MB is not a very good name. The recent collapse of the
+Metaverse and generally bad feelings about the Meta corporation
+have made \MB an unattractive name, even if it is descriptive. We
+are currently soliciting better names from the user community.}
+
+\section{What does \MB do?}
+
+\MB has three functions:
+
+\begin{enumerate}
+\item \textbf{Optimized use of the cluster.} SLURM's scheduling
+algorithm for any partition is a simple search for the next available
+space on the next available node, rather than best fit. On clusters
+with 1000 nodes that are generally very busy, the algorithm works
+well enough. On smaller clusters, we want to use every available
+cycle.
+
+It we think of the cluster usage as a number of finite rectangles
+into which we wish to place LEGOs of varying sizes, the ideal is
+to find a place where a job will fit exactly, thereby using all
+the cores on a node, and all its memory. 
+
+Alternatively, we can override SLURM's behavior to always schedule
+on lower numbered nodes before higher numbered ones within the same
+partition.
+
+\item \textbf{Application of \UR's business rules.} As an example,
+there is no way to tell SLURM that the owner of a condo-node is on
+sabbatical or that it is OK for a particular user to run jobs on a
+node that the user does not ordinarily use without editing the
+\lit{slurm.conf} file. The \lit{slurm.conf} file is designed
+(primarily) to express facts about the hardware rather than apply
+business rules.
+
+\item Functional proofreading of SLURM scripts. For example, the
+Gaussian software is not aided by more than 12 cores, and \MB can
+edit SLURM files before they are submitted to be run.
+
+\end{enumerate}
+
+\section{User experience}
+
+In general use, the users will have no experience of metabatch. As
+they have always done, they will type \lit{sbatch somefile.slurm}
+to submit jobs for scheduling. A system wide shell function named
+\lit{sbatch} will wrap itself around the ``real'' \lit{sbatch}
+command. Any non-default operations will be concealed inside ``expert
+mode'' switches. At the moment, there does not seem to be an obvious
+need for many options, perhaps only these three:
+
+\begin{description}
+\item[-{-}dry-run] Perform a syntax check and edit of the submitted
+SLURM script, but do not run it, and instead tell the user what
+would have happened. 
+
+\item[-{-}no-best-fit] Let SLURM send it to the next available
+location rather than searching for place to run that uses the node
+maximally.
+
+\item[-{-}test] Adjust the time to some short duration (named in
+the config file mentioned below) for the purpose of assessing
+resource usage.
+
+\end{description} 
+
+It is worth noting that, should \MB fail or crash, the \lit{sbatch} 
+submission will revert to the standard SLURM program of the same
+name and the operations it is configured for. 
+
+\section{Design of the \MB program}
+
+\begin{enumerate}
+\item The primary code will be located in a resident \daemon,
+\lit{metabatchd}.
+
+\item Configuration will be in a multipart, standard configuration
+file in \lit{/etc/meta\-batch\-/config}, and additional configuration
+files in \lit{/etc/metabatch/conf.d}. 
+
+The configuration file will contain information about:
+
+\begin{itemize}
+\item Business rules that involve users and condo-nodes.
+\item Program limits for CPU and memory allocation.
+\item Rules about load balancing across nodes.
+\end{itemize}
+
+\item Communication with the \daemon will be done by sending 
+standard Linux signals. For example, standard use in Linux is
+\lit{SIGHUP} for re-reading configuration files, \lit{SIGTERM} 
+to close the program in a graceful shutdown, \etc
+
+\item It is unnecessary for the \daemon to be running on the headnode.
+The \daemon only needs to know the IP addresses of the headnode[s]. 
+In this situation, one \daemon could conceivably carry out campus
+wide scheduling. 
+
+\item SLURM can provide all the information about instantaneous use
+of the cluster and assignment of CPU and memory on each node. This 
+allows for stateless optimization and no need to maintain a copy of
+any configuration information.
+
+\item SLURM itself is run as the privileged user, \lit{slurm}, on
+our systems and most other systems. Even on \spydur where we lack
+\lit{root} access, we have access to both running processes on 
+behalf of the \lit{slurm} user and the \lit{installer} user, and
+the latter can impersonate ordinary (``LDAP'') users.
+
+\item \MB will use the feature in SLURM to assign processes to 
+specific nodes. Users who submit jobs will continue to submit
+the jobs to \emph{partitions}, so no changes to user behavior
+will be required. 
+
+\end{enumerate}
+
+\EOD
+
+\URfooter
+
+\end{document}
+
