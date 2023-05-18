@@ -70,22 +70,7 @@ verbose = False
 
 config_info = {}
 
-@trap
-def parse_slurm_file(slurm_file:str) -> object:
-    """
-    Parses the slurm file, indentifies SLURM parameters.
-    """
-    # regex for SLURM parameters
-    slurm_regex = re.compile('--.+')
-
-    with open(slurm_file, 'r') as f:
-        lst = [x for x in f.readlines()]
-        for x in lst:
-            param = re.search(slurm_regex, x)
-            if param != None: 
-                param = param.string.split('=') 
-                print(param) 
-        
+       
 
 @trap
 def parse_config(config_dir: str) -> dict:
