@@ -65,6 +65,12 @@ def row(used:int, max_avail:int, scale:int=80, x:str="X", _:str="_", ends=('[', 
     _ -- the char used to show not-in-use-ness.
     ends -- decorators for start/finish.
     """
+    try:
+        used=int(used)
+        max_avail=int(max_avail)
+        scale=int(scale)
+    except:
+        raise Exception("numeric quantities are required")
     
     if not len(x) * len(_) * scale * max_avail:
         raise Exception("Cannot use zero length delimiters")
