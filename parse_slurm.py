@@ -2,14 +2,14 @@
 import typing
 from   typing import *
 
-min_py = (3, 8)
+min_py = (3, 9)
 
 ###
 # Standard imports, starting with os and sys
 ###
 import os
 import sys
-if sys.version_info < min_py:
+if sys.version_info == min_py:
     print(f"This program requires Python {min_py[0]}.{min_py[1]}, or higher.")
     sys.exit(os.EX_SOFTWARE)
 
@@ -54,14 +54,7 @@ def parse_slurm_file(slurm_file:str) -> object:
     """
     with open(slurm_file, 'r') as read_file:
         contents = read_file.readlines()
-   
-        # identify the types of lines
-        #sbatch_line = line.startswith("#SBATCH")
-        #shell_line = line.startswith("a")
-        #blank_line = line.startswith("\n")
-        #comment_line = line.startswith() 
-        regex_comment_line = re.compile(r'^#(?!SBATCH|\!\/bin\/bash)[a-zA-Z\s]+')
-        
+        regex_comment_line = re.compile(r'^#(?!SBATCH|\!\/bin\/bash)[a-zA-Z\s]+')        
 
         # create a dictionary { (# line, type of line) : (line) }
         for line_number, line in enumerate(contents):
@@ -82,7 +75,7 @@ def parse_slurm_file(slurm_file:str) -> object:
 
 @trap
 def parse_slurm_main(myargs:argparse.Namespace) -> int:
-    parse_slurm_file("anagrammar.slurm")
+    #parse_slurm_file(myargs.input)
     return os.EX_OK
 
 
@@ -92,7 +85,7 @@ if __name__ == '__main__':
         description="What parse_slurm does, parse_slurm does best.")
 
     parser.add_argument('-i', '--input', type=str, default="",
-        help="Input file name.")
+        help="Input file name that contains SLURM job.")
     parser.add_argument('-o', '--output', type=str, default="",
         help="Output file name")
     parser.add_argument('-v', '--verbose', action='store_true',

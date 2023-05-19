@@ -15,14 +15,14 @@ __license__ = 'MIT'
 import typing
 from   typing import *
 
-min_py = (3, 8)
+min_py = (3, 9)
 
 ###
 # Standard imports, starting with os and sys. Check compatibility.
 ###
 import os
 import sys
-if sys.version_info < min_py:
+if sys.version_info == min_py:
     print(f"This program requires Python {min_py[0]}.{min_py[1]}, or higher.")
     sys.exit(os.EX_SOFTWARE)
 
@@ -51,6 +51,7 @@ from   urdecorators import trap
 ###
 # imports and objects that are a part of this project
 ###
+from parse_slurm import parse_slurm_file
 
 ###
 # Globals

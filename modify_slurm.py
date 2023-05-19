@@ -2,14 +2,14 @@
 import typing
 from   typing import *
 
-min_py = (3, 9)
+min_py = (3, 8)
 
 ###
 # Standard imports, starting with os and sys
 ###
 import os
 import sys
-if sys.version_info == min_py:
+if sys.version_info < min_py:
     print(f"This program requires Python {min_py[0]}.{min_py[1]}, or higher.")
     sys.exit(os.EX_SOFTWARE)
 
@@ -30,7 +30,8 @@ from   urdecorators import trap
 ###
 # imports and objects that are a part of this project
 ###
-from parse_slurm import parse_slurm_file 
+from parse_slurm import parse_slurm_file
+from parse_config import parse_config_file
 verbose = False
 
 ###
@@ -46,37 +47,38 @@ __status__ = 'in progress'
 __license__ = 'MIT'
 
 @trap
-def write_slurm_to_file(filename, slurm_dct: dict) -> None:
+def modify_slurm_file(slurm_dct: dict) -> dict:
     """
-    Rewrites the slurm file based on a dictionary.
+    Rewrite slurm file based on the business rules and program configurations.
     """
-    with open(filename, "w") as slurm_mod_file:
-        for key, val in slurm_dct.items():
-            slurm_mod_file.write(val)    
-    return 
+    print(slurm_dct) 
 
 
 @trap
-def write_slurm_main(myargs:argparse.Namespace) -> int:
-    try:
-        slurm_dct = parse_slurm_file(myargs.input)
-        write_slurm_to_file(myargs.input, slurm_dct)
-    except:
-        pass 
+def modify_slurm_main(myargs:argparse.Namespace) -> int:
+    slurm_dct = parse_slurm_file(myargs.input)
+    config = parse_config_file(myargs.config_dir)
+    modify_slurm_file(slurm_dct)
     return os.EX_OK
 
 
 if __name__ == '__main__':
     
-    parser = argparse.ArgumentParser(prog="write_slurm", 
-        description="What write_slurm does, write_slurm does best.")
-
+    parser = argparse.ArgumentParser(prog="modify_slurm", 
+        description="What modify_slurm does, modify_slurm does best.")
+    
+    parser.add_argument('-c', '--config-dir', type=str, default="/etc/metabatch.d",
+        help="Input directory with configuration files.")
     parser.add_argument('-i', '--input', type=str, default="",
         help="Input file name that contains SLURM job.")
     parser.add_argument('-o', '--output', type=str, default="",
         help="Output file name")
-    parser.add_argument('-v', '--verbose', action='store_true',
-        help="Be chatty about what is taking place")
+    parser.add_argument('-v', '--verbose', type=str, 
+        choices=('CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG', 'NOTSET'),
+        default='ERROR',
+        help="Be chatty or not at the corresponding log level.")
+
+
 
 
     myargs = parser.parse_args()
