@@ -69,74 +69,6 @@ myargs = None
 mynetid = getpass.getuser()
 verbose = False
 
-config_info = {}
-
-       
-
-@trap
-def parse_config(config_dir: str) -> dict:
-    """
-    Parses configuration directory and its files. Returns a nested dictionary with the contents of configuration files.
-    """
-    global config_info
-
-    parse_logger =  logging.getLogger('metabatch').getChild('parse_config')
-    parse_logger.setLevel(myargs.verbose)
-
-    if not os.path.exists(config_dir):
-        parse_logger.error(f"Directory {myargs.config_dir} is not found")
-        sys.exit(os.EX_CONFIG)        
-
-    if len(os.listdir(config_dir)) == 0:
-        parse_logger.debug("Directory is empty. No configuration files were found")
-        sys.exit(os.EX_CONFIG)    
- 
-
-    #get the contents of the directory with config information
-    config_items = os.listdir(config_dir)
- 
-    for item in config_items:
-
-        parse_logger.info("Reading configuration files")
-        path_to_item = config_dir+'/'+item
-        
-        #loop over files in subdirectory
-        if os.path.isdir(path_to_item):
-            for filename in os.listdir(path_to_item):
-                path_to_file = path_to_item+'/'+filename               
-                #create configparser object
-                parser = configparser.ConfigParser()
-                parser.read(path_to_file)
-                
-                #populate the dictionary
-                config_info[path_to_file]={}
-                for sect in parser.sections():
-                    names = []
-                    values = []
-                    for name, value in parser.items(sect):
-                        names.append(name)
-                        values.append(value)
-                    config_info[path_to_file][sect] = dict(zip(names, values))
- 
-        #loop over files in the directory
-        elif os.path.isfile(path_to_item):
-            
-            #create config parser object
-            parser = configparser.ConfigParser()
-            parser.read(path_to_item)
-            
-            #populate the dictionary
-            config_info[path_to_item]={}
-            for sect in parser.sections():
-                names = []
-                values = []
-                for name, value in parser.items(sect):
-                    names.append(name)
-                    values.append(value)
-                config_info[path_to_item][sect] = dict(zip(names, values)) 
-                       
-    return config_info
- 
 @trap
 def handler(signum:int, stack:object=None) -> None:
     """
@@ -146,7 +78,7 @@ def handler(signum:int, stack:object=None) -> None:
     handler_logger = logging.getLogger('metabatch').getChild('handler')
     handler_logger.setLevel(myargs.verbose)
 
-    if signum in tuple(signal.SIGHUP, signal.SIGUSR1):
+    if signum in tuple((signal.SIGHUP, signal.SIGUSR1)):
         handler_logger.debug('Rereading all configuration files.')
         metabatch_main(myargs)
 

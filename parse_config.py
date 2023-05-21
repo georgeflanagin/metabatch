@@ -33,6 +33,7 @@ from   urdecorators import trap
 # imports and objects that are a part of this project
 ###
 verbose = False
+myargs = None
 
 ###
 # Credits
@@ -55,15 +56,15 @@ def parse_config_file(config_dir: str) -> dict:
     """
     global config_info
 
-    #parse_logger =  logging.getLogger('metabatch').getChild('parse_config')
-    #parse_logger.setLevel(myargs.verbose)
+    parse_logger =  logging.getLogger('metabatch').getChild('parse_config')
+    parse_logger.setLevel(myargs.verbose)
 
     if not os.path.exists(config_dir):
-        #parse_logger.error(f"Directory {myargs.config_dir} is not found")
+        parse_logger.error(f"Directory {myargs.config_dir} is not found")
         sys.exit(os.EX_CONFIG)        
 
     if len(os.listdir(config_dir)) == 0:
-        #parse_logger.debug("Directory is empty. No configuration files were found")
+        parse_logger.debug("Directory is empty. No configuration files were found")
         sys.exit(os.EX_CONFIG)    
  
 
@@ -72,7 +73,7 @@ def parse_config_file(config_dir: str) -> dict:
  
     for item in config_items:
 
-        #parse_logger.info("Reading configuration files")
+        parse_logger.info("Reading configuration files")
         path_to_item = config_dir+'/'+item
         
         #loop over files in subdirectory
