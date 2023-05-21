@@ -24,6 +24,7 @@ mynetid = getpass.getuser()
 ###
 # From hpclib
 ###
+from dorunrun import dorunrun
 import fifo
 import linuxutils
 from   urdecorators import trap
@@ -31,6 +32,9 @@ from   urdecorators import trap
 ###
 # imports and objects that are a part of this project
 ###
+from parse_slurm import parse_slurm_file
+from modify_slurm import modify_slurm_file
+from write_slurm import write_slurm_to_file
 verbose = False
 
 ###
@@ -49,7 +53,13 @@ __license__ = 'MIT'
 @trap
 def read_pipe_main(myargs:argparse.Namespace) -> int:
     pipe = fifo.FIFO(myargs.input)
-    print(pipe)
+    data = pipe.wait_for_data(60)
+    netid = data.split(",")[0]
+    data = data.split(",")[1]
+    parse_slurm_file(data)
+    modify_slurm_file(data) 
+    mod_file = write_slurm_file(data)
+    dorunrun(f"sudo command sbatch {mod_file} -u {netid}")
     return os.EX_OK
 
 
