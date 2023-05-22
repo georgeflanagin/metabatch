@@ -42,18 +42,34 @@ verbose = False
 # Credits
 ###
 __author__ = 'George Flanagin'
-__copyright__ = 'Copyright 2022, University of Richmond'
+__copyright__ = 'Copyright 2023, University of Richmond'
 __credits__ = None
 __version__ = 0.1
-__maintainer__ = 'George Flanagin'
+__maintainer__ = 'George Flanagin, Alina Enikeeva'
 __email__ = 'gflanagin@richmond.edu'
 __status__ = 'in progress'
 __license__ = 'MIT'
 
 @trap
 def draw_map() -> dict:
+    data = SeekINFO()
+    print(data)
+    memory_map = []
+    core_map = []
+    for line in ( _ for _ in data.stdout.split('\n')[1:] if _ ):
+        node, free, total, status, true_cores, cores = line.split()
+        cores = cores.split('/')
+        used = int(total) - int(free)
+        memory_map.append(f"{node} {scaling.row(used, total)}")
+        core_map.append(f"{node} {scaling.row(cores[0], true_cores)}")
+
+    return {"memory":memory_map, "cores":core_map}
+
+@trap
+def SeekINFO() -> tuple:
     cmd = 'sinfo -o "%n %e %m %a %c %C"'
     data = SloppyTree(dorunrun(cmd, return_datatype=dict))
+    
     if not data.OK:
         verbose and print(f"sinfo failed: {data.code=}")
         return os.EX_DATAERR
@@ -63,16 +79,8 @@ def draw_map() -> dict:
     #
     # spdr12 424105 768000 up 52 12/40/0/52
 
-    memory_map = []
-    core_map = []
-    for line in ( _ for _ in data.stdout.split('\n')[1:] if _ ):
-        node, used, total, status, true_cores, cores = line.split()
-        cores = cores.split('/')
-        memory_map.append(f"{node} {scaling.row(used, total)}")
-        core_map.append(f"{node} {scaling.row(cores[0], true_cores)}")
+    return data
 
-    return {"memory":memory_map, "cores":core_map}
-    
                 
 @trap
 def mapper_main(myargs:argparse.Namespace) -> int:
