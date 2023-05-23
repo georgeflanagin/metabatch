@@ -53,9 +53,13 @@ __license__ = 'MIT'
 @trap
 def draw_map() -> dict:
     data = SeekINFO()
-    print(data)
     memory_map = []
     core_map = []
+   
+    # We don't need the header row here is an example line:
+    #
+    # spdr12 424105 768000 up 52 12/40/0/52
+
     for line in ( _ for _ in data.stdout.split('\n')[1:] if _ ):
         node, free, total, status, true_cores, cores = line.split()
         cores = cores.split('/')
@@ -75,10 +79,6 @@ def SeekINFO() -> tuple:
         return os.EX_DATAERR
 
     verbose and print(data.stdout)
-    # We don't need the header row here is an example line:
-    #
-    # spdr12 424105 768000 up 52 12/40/0/52
-
     return data
 
                 
