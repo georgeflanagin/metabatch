@@ -46,9 +46,15 @@ __copyright__ = 'Copyright 2023, University of Richmond'
 __credits__ = None
 __version__ = 0.1
 __maintainer__ = 'George Flanagin, Alina Enikeeva'
-__email__ = 'gflanagin@richmond.edu'
+__email__ = ['gflanagin@richmond.edu', 'alina.enikeeva@richmond.edu']
 __status__ = 'in progress'
 __license__ = 'MIT'
+
+scaling_values = {
+    384000 : 25,
+    768000 : 50,
+    1536000 : 100
+    }
 
 @trap
 def draw_map() -> dict:
@@ -64,7 +70,7 @@ def draw_map() -> dict:
         node, free, total, status, true_cores, cores = line.split()
         cores = cores.split('/')
         used = int(total) - int(free)
-        memory_map.append(f"{node} {scaling.row(used, total)}")
+        memory_map.append(f"{node} {scaling.row(used, total, scaling_values[total])}")
         core_map.append(f"{node} {scaling.row(cores[0], true_cores)}")
 
     return {"memory":memory_map, "cores":core_map}
