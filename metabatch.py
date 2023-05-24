@@ -30,7 +30,6 @@ if sys.version_info < min_py:
 # Other standard distro imports
 ###
 import argparse
-import configparser
 import contextlib
 import getpass
 import logging
@@ -51,6 +50,7 @@ from   urdecorators import trap
 ###
 # imports and objects that are a part of this project
 ###
+import config
 
 ###
 # Globals
@@ -87,69 +87,6 @@ def parse_slurm_file(slurm_file:str) -> object:
                 print(param) 
         
 
-@trap
-def parse_config(config_dir: str) -> dict:
-    """
-    Parses configuration directory and its files. Returns a nested dictionary with the contents of configuration files.
-    """
-    global config_info
-
-    parse_logger =  logging.getLogger('metabatch').getChild('parse_config')
-    parse_logger.setLevel(myargs.verbose)
-
-    if not os.path.exists(config_dir):
-        parse_logger.error(f"Directory {myargs.config_dir} is not found")
-        sys.exit(os.EX_CONFIG)        
-
-    if len(os.listdir(config_dir)) == 0:
-        parse_logger.debug("Directory is empty. No configuration files were found")
-        sys.exit(os.EX_CONFIG)    
- 
-
-    #get the contents of the directory with config information
-    config_items = os.listdir(config_dir)
- 
-    for item in config_items:
-
-        parse_logger.info("Reading configuration files")
-        path_to_item = config_dir+'/'+item
-        
-        #loop over files in subdirectory
-        if os.path.isdir(path_to_item):
-            for filename in os.listdir(path_to_item):
-                path_to_file = path_to_item+'/'+filename               
-                #create configparser object
-                parser = configparser.ConfigParser()
-                parser.read(path_to_file)
-                
-                #populate the dictionary
-                config_info[path_to_file]={}
-                for sect in parser.sections():
-                    names = []
-                    values = []
-                    for name, value in parser.items(sect):
-                        names.append(name)
-                        values.append(value)
-                    config_info[path_to_file][sect] = dict(zip(names, values))
- 
-        #loop over files in the directory
-        elif os.path.isfile(path_to_item):
-            
-            #create config parser object
-            parser = configparser.ConfigParser()
-            parser.read(path_to_item)
-            
-            #populate the dictionary
-            config_info[path_to_item]={}
-            for sect in parser.sections():
-                names = []
-                values = []
-                for name, value in parser.items(sect):
-                    names.append(name)
-                    values.append(value)
-                config_info[path_to_item][sect] = dict(zip(names, values)) 
-                       
-    return config_info
  
 @trap
 def handler(signum:int, stack:object=None) -> None:
@@ -206,13 +143,12 @@ def metabatch_main(myargs:argparse.Namespace) -> int:
     mylogger.setLevel(myargs.verbose)
 
     config = sloppytree.SloppyDict()
-    p = configparser.ConfigParser()
 
     #for filename in fileutils.all_files_in(myargs.config_dir):
         #config.update(p.read(filename))
 
     # traverse all the files and directories in config_dir and, if not empty, read them
-    config_info = parse_config(myargs.config_dir)
+    config_info = config.parse_config(myargs.config_dir)
     print(config_info)  
 
     # parse slurm parameters in the submitted file
