@@ -74,7 +74,10 @@ def fit_the_job(requested_mem: int, requested_cpu: int) -> str:
         #node_usage[node] = [int(used), int(cores[0])]
         node_usage[node] = int(used)
     #node_usage = sorted(node_usage.items(), reverse=True)
+
+    # node_usage = sorted( ((v, k) for k, v in node_usage.items()), reverse=True)
     print(node_usage)
+    sys.exit(os.EX_OK)
     
 
 
