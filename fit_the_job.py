@@ -37,12 +37,12 @@ verbose = False
 ###
 # Credits
 ###
-__author__ = 'George Flanagin'
-__copyright__ = 'Copyright 2022, University of Richmond'
+__author__ = 'Alina Enikeeva'
+__copyright__ = 'Copyright 2023, University of Richmond'
 __credits__ = None
 __version__ = 0.1
-__maintainer__ = 'George Flanagin'
-__email__ = 'gflanagin@richmond.edu'
+__maintainer__ = 'Alina Enikeeva'
+__email__ = 'alina.enikeeva@richmond.edu'
 __status__ = 'in progress'
 __license__ = 'MIT'
 
@@ -77,7 +77,6 @@ def fit_the_job(requested_mem: int, requested_cpu: int) -> str:
 
     # node_usage = sorted( ((v, k) for k, v in node_usage.items()), reverse=True)
     print(node_usage)
-    sys.exit(os.EX_OK)
     
 
 
