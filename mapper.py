@@ -72,10 +72,47 @@ def draw_map() -> dict:
         cores = cores.split('/')
         used = int(total) - int(free)
         scale=scaling_values[int(total)]
-        memory_map.append(f"{node} {scaling.row(used, total, scale)}")
-        core_map.append(f"{node} {scaling.row(cores[0], true_cores)}")
+        memory_map.append(f"{node} {row(used, total, scale)}")
+        core_map.append(f"{node} {row(cores[0], true_cores)}")
 
     return {"memory":memory_map, "cores":core_map}
+
+
+@trap
+def row(used:int, max_avail:int, scale:int=80, x:str="X", _:str="_", ends=('[', ']')) -> str:
+    """
+    used -- quantity to be filled with x.
+    max_avail -- set of which used is a subset.
+    scale -- if scale < max_avail, then used and max_avail are divided by scale.
+    x -- the char used to show in-use-ness.
+    _ -- the char used to show not-in-use-ness.
+    ends -- decorators for start/finish.
+    """
+    try:
+        used=int(used)
+        max_avail=int(max_avail)
+        scale=int(scale)
+    except:
+        raise Exception("numeric quantities are required")
+    
+    if not len(x) * len(_) * scale * max_avail:
+        raise Exception("Cannot use zero length delimiters")
+
+    if used < 0 or max_avail < 0 or scale < 0:
+        raise Exception("quantities must be non-negative")
+
+    used = max_avail if used > max_avail else used
+
+    if scale < max_avail:
+        used = round(used * scale / max_avail)
+    else:
+        scale = max_avail
+
+    xes = used*x
+    _s  = (scale-used)*_
+
+    return f"{ends[0]}{xes}{_s}{ends[1]}"
+
 
 @trap
 def SeekINFO() -> tuple:
