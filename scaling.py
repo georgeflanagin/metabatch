@@ -56,7 +56,7 @@ __license__ = 'MIT'
 
 
 @trap
-def row(used:int, max_avail:int, scale:int=80, x:str="X", _:str="_", ends=('[', ']')) -> str:
+def row(used:int, max_avail:int, scale:int=80, x:str="X", _:str="_", ends=('[', ']'), no_overflow:bool=True) -> str:
     """
     used -- quantity to be filled with x.
     max_avail -- set of which used is a subset.
@@ -78,7 +78,7 @@ def row(used:int, max_avail:int, scale:int=80, x:str="X", _:str="_", ends=('[', 
     if used < 0 or max_avail < 0 or scale < 0:
         raise Exception("quantities must be non-negative")
 
-    used = max_avail if used > max_avail else used
+    used = max_avail if used > max_avail and no_overflow else used
 
     if scale < max_avail:
         used = round(used * scale / max_avail)
@@ -86,7 +86,7 @@ def row(used:int, max_avail:int, scale:int=80, x:str="X", _:str="_", ends=('[', 
         scale = max_avail
 
     xes = used*x
-    _s  = (scale-used)*_
+    _s  = (max(scale-used,0))*_
 
     return f"{ends[0]}{xes}{_s}{ends[1]}"
 

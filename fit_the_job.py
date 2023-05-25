@@ -65,38 +65,42 @@ def fit_the_job(requested_mem: int, requested_cpu: int) -> str:
     medium_condos = ['spdr09', 'spdr10', 'spdr11', 'spdr12', 'spdr13', 'spdr53', 'spdr55', 'spdr56', 'spdr57', 'spdr58'] 
     large_condos = ['spdr14', 'spdr15', 'spdr51', 'spdr52', 'spdr59']
     found_fit = False
-    node_usage = {}
+    found_cpu_fit = False
+    node_usage = {} #usage of memory
+    cpu_usage = {} #usage of cpu
     data = SeekINFO()
+
     for line in ( _ for _ in data.stdout.split('\n')[1:] if _ ):
         node, free, total, status, true_cores, cores = line.split()
         cores = cores.split('/')
         used = int(total) - int(free)
-        #node_usage[node] = [int(used), int(cores[0])]
-        node_usage[node] = int(used)
-    #node_usage = sorted(node_usage.items(), reverse=True)
+        #node_usage[node] = int(used), int(cores[0])
+        node_usage[node] = int(used) #usage of memory
+        cpu_usage[node] = 52 - int(cores[0]) #find out how many CPUs are available
 
-    # node_usage = sorted( ((v, k) for k, v in node_usage.items()), reverse=True)
-    print(node_usage)
-    sys.exit(os.EX_OK)
+    # sorted dictionary results in the list of tuples
+    node_usage = sorted( ((v, k) for k, v in node_usage.items()), reverse=True)
+    # convert the list of tuples into a dictionary
+    node_usage = dict( (k,v) for v, k in node_usage)
     
 
-
     for i in range(len(node_usage)):
+    
+        ### if we found the memory-wise fit, look for the CPU fit
         if found_fit == True:
+            cpu = cpu_usage[busiest_node] 
+            if requested_cpu <= cpu: 
+                found_cpu_fit = True
+        else:   
+            found_fit = False
+    
+        if found_fit and found_cpu_fit:
             print(f"job is allocated to {busiest_node}")
+            print(f"job requested {requested_mem, requested_cpu} to the node with {busiest_node_free_mem, cpu_usage[busiest_node]}")
             break
 
         for node, mem_cpu in node_usage.items():
             busiest_node = find_busiest_node(node_usage)        
-            #print(node,mem_cpu)
-            #print(busiest_node)     
-            #print(requested_mem, node_usage.get(busiest_node))
-
-            #### this is for both memory and cpu. not working for now
-            #if requested_mem <= busiest_node[0] and requested_cpu <= int(true_cores)-busiest_node[1]:
-            #    print(f"the job is allocated to node {is_busiest}")
-            #busiest_node_cpu = node_usage.get(busiest_node[1])
-             ####
             
             busiest_node_mem = node_usage.get(busiest_node)
             if busiest_node in medium_condos:
@@ -107,16 +111,14 @@ def fit_the_job(requested_mem: int, requested_cpu: int) -> str:
                 total_mem = 384000
 
             busiest_node_free_mem = int(total_mem) - busiest_node_mem
-            print("requested: ", requested_mem)
-            print("busiest node used mem: ", busiest_node_mem)
-            print("total: ", total_mem)
-            print("busiest node available mem: ", busiest_node_free_mem)
+            #print("requested: ", requested_mem)
+            #print("busiest node used mem: ", busiest_node_mem)
+            #print("total: ", total_mem)
+            #print("busiest node available mem: ", busiest_node_free_mem)
             if requested_mem <= busiest_node_free_mem: 
                 found_fit = True
-                #print(f"job is allocated to {busiest_node}")
                 break    
-            else:
-                #print("looking for another node")
+            else: #look for another node
                 node_usage[busiest_node] = 0 
             
         
@@ -140,7 +142,7 @@ def fit_the_job(requested_mem: int, requested_cpu: int) -> str:
 @trap
 def fit_the_job_main(myargs:argparse.Namespace) -> int:
     
-    fit_the_job(340000, 10)
+    fit_the_job(340000, 17)
     fit_the_job(300000, 12)
     fit_the_job(240000, 20)
     fit_the_job(20000, 6)

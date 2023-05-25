@@ -28,6 +28,7 @@ import pprint
 from   dorunrun import dorunrun
 import linuxutils
 from   sloppytree import SloppyTree
+import slurmutils
 from   urdecorators import trap
 
 ###
@@ -62,6 +63,7 @@ def draw_map() -> dict:
     data = SeekINFO()
     memory_map = []
     core_map = []
+    busy_map = []
    
     # We don't need the header row here is an example line:
     #
@@ -69,13 +71,15 @@ def draw_map() -> dict:
 
     for line in ( _ for _ in data.stdout.split('\n')[1:] if _ ):
         node, free, total, status, true_cores, cores = line.split()
+        load_info = slurmutils.load_avg(node[-2:])
         cores = cores.split('/')
         used = int(total) - int(free)
         scale=scaling_values[int(total)]
         memory_map.append(f"{node} {scaling.row(used, total, scale)}")
         core_map.append(f"{node} {scaling.row(cores[0], true_cores)}")
+        busy_map.append(f"{node} {scaling.row(load_info[0], 52, no_overflow=False)}")
 
-    return {"memory":memory_map, "cores":core_map}
+    return {"memory":memory_map, "cores":core_map, "saturation":busy_map}
 
 @trap
 def SeekINFO() -> tuple:
