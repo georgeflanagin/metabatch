@@ -46,6 +46,9 @@ __email__ = 'gflanagin@richmond.edu'
 __status__ = 'in progress'
 __license__ = 'MIT'
 
+medium_condos = ['spdr09', 'spdr10', 'spdr11', 'spdr12', 'spdr13', 'spdr53', 'spdr55', 'spdr56', 'spdr57', 'spdr58'] 
+large_condos = ['spdr14', 'spdr15', 'spdr51', 'spdr52', 'spdr59']
+
 @trap
 def find_busiest_node(node_usage) -> str:
     """
@@ -58,46 +61,16 @@ def find_busiest_node(node_usage) -> str:
     return busiest[0]
 
 @trap
-def fit_the_job(requested_mem: int, requested_cpu: int) -> str:
+def fit_to_memory(requested_mem: int, node_usage: dict) -> None:
     """
-    Finds the busiest node where the job can fit.
+    Finds the node that can fit the job memory-wise.
     """
-    medium_condos = ['spdr09', 'spdr10', 'spdr11', 'spdr12', 'spdr13', 'spdr53', 'spdr55', 'spdr56', 'spdr57', 'spdr58'] 
-    large_condos = ['spdr14', 'spdr15', 'spdr51', 'spdr52', 'spdr59']
     found_fit = False
-    found_cpu_fit = False
-    node_usage = {} #usage of memory
-    cpu_usage = {} #usage of cpu
-    data = SeekINFO()
-
-    for line in ( _ for _ in data.stdout.split('\n')[1:] if _ ):
-        node, free, total, status, true_cores, cores = line.split()
-        cores = cores.split('/')
-        used = int(total) - int(free)
-        #node_usage[node] = int(used), int(cores[0])
-        node_usage[node] = int(used) #usage of memory
-        cpu_usage[node] = 52 - int(cores[0]) #find out how many CPUs are available
-
-    # sorted dictionary results in the list of tuples
-    node_usage = sorted( ((v, k) for k, v in node_usage.items()), reverse=True)
-    # convert the list of tuples into a dictionary
-    node_usage = dict( (k,v) for v, k in node_usage)
-    
 
     for i in range(len(node_usage)):
     
-        ### if we found the memory-wise fit, look for the CPU fit
-        if found_fit == True:
-            cpu = cpu_usage[busiest_node] 
-            if requested_cpu <= cpu: 
-                found_cpu_fit = True
-        else:   
-            found_fit = False
-    
-        if found_fit and found_cpu_fit:
-            print(f"job is allocated to {busiest_node}")
-            print(f"job requested {requested_mem, requested_cpu} to the node with {busiest_node_free_mem, cpu_usage[busiest_node]}")
-            break
+        if found_fit:
+            return busiest_node
 
         for node, mem_cpu in node_usage.items():
             busiest_node = find_busiest_node(node_usage)        
@@ -111,42 +84,75 @@ def fit_the_job(requested_mem: int, requested_cpu: int) -> str:
                 total_mem = 384000
 
             busiest_node_free_mem = int(total_mem) - busiest_node_mem
-            #print("requested: ", requested_mem)
-            #print("busiest node used mem: ", busiest_node_mem)
-            #print("total: ", total_mem)
-            #print("busiest node available mem: ", busiest_node_free_mem)
             if requested_mem <= busiest_node_free_mem: 
                 found_fit = True
                 break    
             else: #look for another node
                 node_usage[busiest_node] = 0 
             
-        
+    return None
 
 
+
+@trap
+def fit_to_cpu(requested_cpu: int, cpu_usage: dict, mem_fit_node: str) -> None:
+    """
+    Finds the node that can fit the job cpu-wise.
+    """
+    cpu = cpu_usage[mem_fit_node] 
+    if requested_cpu <= cpu: 
+        return True
+    return False     
+
+
+@trap
+def fit_the_job(requested_mem: int, requested_cpu: int) -> str:
+    """
+    Finds the busiest node where the job can fit.
+    """
+    node_usage = {} #usage of memory
+    cpu_usage = {} #usage of cpu
+    data = SeekINFO()
+
+    for line in ( _ for _ in data.stdout.split('\n')[1:] if _ ):
+        node, free, total, status, true_cores, cores = line.split()
+        cores = cores.split('/')
+        used = int(total) - int(free)
+        node_usage[node] = int(used) #usage of memory
+        cpu_usage[node] = 52 - int(cores[0]) #find out how many CPUs are available
+
+    # sorted dictionary results in the list of tuples
+    node_usage = sorted( ((v, k) for k, v in node_usage.items()), reverse=True)
+    # convert the list of tuples into a dictionary
+    node_usage = dict( (k,v) for v, k in node_usage)
+   
+    complete_fit_node = False
+ 
+    for i in range(len(node_usage)):    
+        mem_fit_node = fit_to_memory(requested_mem, node_usage)
     
-    #### this is to find what partition requested and what nodes to explore. not working for now
-    """
-    ### find info about partition
-    cmd = 'sinfo -o "%n %P"'
-    d = SloppyTree(dorunrun(cmd, return_datatype=dict))
-    print(d) 
-    for line in ( _ for _ in d.stdout.split('\n')[1:] if _ ):
-        n, partition = line.split()
-        
-    if node == n and n in 
-    """
+        if mem_fit_node != None: 
+            complete_fit_node = fit_to_cpu(requested_cpu, cpu_usage, mem_fit_node)
 
-    return node
+        if complete_fit_node == True:
+            print(f"job that requested {requested_mem, requested_cpu} is allocated to {mem_fit_node}")
+            break
+        elif mem_fit_node != None:
+            del node_usage[mem_fit_node]    
+        else:
+            print(f"job that requested {requested_mem, requested_cpu} could not be allocated")
+
+    return None 
 
 @trap
 def fit_the_job_main(myargs:argparse.Namespace) -> int:
     
-    fit_the_job(340000, 17)
-    fit_the_job(300000, 12)
+    fit_the_job(340000, 150)
+    fit_the_job(30000000, 12)
     fit_the_job(240000, 20)
     fit_the_job(20000, 6)
     fit_the_job(600000, 24)
+    
     return os.EX_OK
 
 

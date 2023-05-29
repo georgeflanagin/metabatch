@@ -64,6 +64,7 @@ def draw_map() -> dict:
     memory_map = []
     core_map = []
     busy_map = []
+    usage_map = []
    
     # We don't need the header row here is an example line:
     #
@@ -78,8 +79,17 @@ def draw_map() -> dict:
         memory_map.append(f"{node} {scaling.row(used, total, scale)}")
         core_map.append(f"{node} {scaling.row(cores[0], true_cores)}")
         busy_map.append(f"{node} {scaling.row(load_info[0], 52, no_overflow=False)}")
+        # usage_map.append(f"{node} {scaling.row(float(load_info[0])/float(cores[0]), 50, no_overflow=False)}")
+        try:
+            usage_value = 100*float(load_info[0])/float(cores[0])
+        except:
+            usage_value = 0
+        usage_map.append(f"{node} {scaling.row(usage_value, 100, 50, no_overflow=False)}")
 
-    return {"memory":memory_map, "cores":core_map, "saturation":busy_map}
+    return {"memory":memory_map, 
+        "cores":core_map, 
+        "saturation":busy_map,
+        "subscription":usage_map}
 
 @trap
 def SeekINFO() -> tuple:
