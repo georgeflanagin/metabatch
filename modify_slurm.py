@@ -46,6 +46,44 @@ __email__ = ['alina@richmond.edu']
 __status__ = 'in progress'
 __license__ = 'MIT'
 
+progs = {'gaussian': '$GAUSS',
+        'qchem': 'qchem',
+        'QuantumeExpresso': 'QEPATH',
+        'amber': '$AMBER'}
+
+@trap
+def xform_blank(s:str) -> str:
+    """
+    Modifies blank lines.
+    """
+
+    return
+
+@trap
+def xform_comment(s:str) -> str:
+    """
+    Modifies comment lines.
+    """
+    s = "???????" + s 
+    return s
+
+
+@trap 
+def xform_shell(s:str) -> str:
+    """
+    Modifies shell lines.
+    """
+
+    return
+
+@trap
+def xform_sbatch(s:str) -> str:
+    """
+    Modifies SBATCH lines.
+    """
+
+    return 
+
 @trap
 def modify_slurm_file(file: object) -> dict:
     """
@@ -55,12 +93,30 @@ def modify_slurm_file(file: object) -> dict:
     #config = parse_config_file(myargs.config_dir)
 
     slurm_dct_mod = slurm_dct #that will have to be replaced
+    
+    
+
+    # identidy the type of program that the file runs
+    prog_run = "" 
+    for line in slurm_dct.values():
+        for prog, key_word in progs.items():
+            if key_word in line:
+                prog_run = prog
+                break 
+
+    
+    # call the functions to modify the lines based on their types
+    for k, line in slurm_dct.items():
+        print(globals()["xform_"+k[1]](line))
+        
+
     return slurm_dct_mod
 
 
 @trap
 def modify_slurm_main(myargs:argparse.Namespace) -> int:
-    print(modify_slurm_file(myargs.input))
+    modify_slurm_file(myargs.input)
+    #print(modify_slurm_file(myargs.input))
     return os.EX_OK
 
 
