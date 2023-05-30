@@ -57,7 +57,7 @@ def xform_blank(s:str) -> str:
     Modifies blank lines.
     """
 
-    return
+    return s
 
 @trap
 def xform_comment(s:str) -> str:
@@ -74,7 +74,7 @@ def xform_shell(s:str) -> str:
     Modifies shell lines.
     """
 
-    return
+    return s
 
 @trap
 def xform_sbatch(s:str) -> str:
@@ -82,7 +82,7 @@ def xform_sbatch(s:str) -> str:
     Modifies SBATCH lines.
     """
 
-    return 
+    return s
 
 @trap
 def modify_slurm_file(file: object) -> dict:
@@ -93,7 +93,6 @@ def modify_slurm_file(file: object) -> dict:
     #config = parse_config_file(myargs.config_dir)
 
     slurm_dct_mod = slurm_dct #that will have to be replaced
-    
     
 
     # identidy the type of program that the file runs
