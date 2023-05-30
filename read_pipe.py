@@ -49,17 +49,31 @@ __email__ = ['alina@richmond.edu']
 __status__ = 'in progress'
 __license__ = 'MIT'
 
+@trap
+def read_pipe(pipe: object) -> None:
+    """
+    Reads from a file pipe, modifies it and submits the new file to SLURM.
+    """
+    # read the file once it is submitted to pipe
+    pipe = fifo.FIFO(pipe)
+    data = pipe.wait_for_data(60*60*24)
+    
+    # identify the file and who submitted it
+    netid = data[0].split(",")[0]
+    data = data[0].split(",")[1][:len(data)-2]
+    
+    # read the slurm file and modify it
+    data_mod = modify_slurm_file(data) 
+    mod_file = write_slurm_to_file(data, data_mod)
+    
+    # submit the job to SLURM
+    dorunrun(f"sudo -u {netid} command sbatch {mod_file}")
+
 
 @trap
 def read_pipe_main(myargs:argparse.Namespace) -> int:
-    pipe = fifo.FIFO(myargs.input)
-    data = pipe.wait_for_data(60)
-    netid = data.split(",")[0]
-    data = data.split(",")[1]
-    parse_slurm_file(data)
-    modify_slurm_file(data) 
-    mod_file = write_slurm_file(data)
-    dorunrun(f"sudo command sbatch {mod_file} -u {netid}")
+    read_pipe(myargs.input)    
+
     return os.EX_OK
 
 

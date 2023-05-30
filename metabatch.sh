@@ -1,15 +1,20 @@
-"""
-This function overwrites original command sbatch.
-It reads the 
-"""
+#!/bin/sh
+#This function overwrites original command sbatch.
 
-function sbtach{
-	if [-z $1]; then
-	echo “syntax …”
-	return
+function sbatch
+{
+	if [ -z "$1" ]; then
+        echo "syntax ..."
+        return
 	fi
 	
-	filename = realpath “$1”
- 	echo “$(whoami), $filename” > metapipe
+	filename=$(realpath "$1")
+ 	echo "$(whoami),$filename" > metapipe
+
 }
 
+
+function readpipe
+{
+    python -c 'import read_pipe; print(read_pipe.read_pipe('metapipe'))'    
+}

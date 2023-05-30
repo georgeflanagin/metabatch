@@ -115,6 +115,9 @@ def parse_config_file(config_dir: str) -> dict:
  
 @trap
 def parse_config_main(myargs:argparse.Namespace) -> int:
+    for item in parse_config_file(myargs.config_dir).items():
+        print(item)
+
     print(parse_config_file(myargs.config_dir))
     return os.EX_OK
 

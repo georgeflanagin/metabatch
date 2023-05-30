@@ -46,20 +46,20 @@ __status__ = 'in progress'
 __license__ = 'MIT'
 
 @trap
-def write_slurm_to_file(filename, slurm_dct: dict) -> None:
+def write_slurm_to_file(filename: str, slurm_dct_mod: dict) -> None:
     """
     Rewrites the slurm file based on a dictionary.
     """
     with open(filename, "w") as slurm_mod_file:
-        for key, val in slurm_dct.items():
+        for key, val in slurm_dct_mod.items():
             slurm_mod_file.write(val)    
-    return 
+    return slurm_mod_file 
 
 
 @trap
 def write_slurm_main(myargs:argparse.Namespace) -> int:
     try:
-        slurm_dct = parse_slurm_file(myargs.input)
+        slurm_dct = modify_slurm_file(myargs.input)
         write_slurm_to_file(myargs.input, slurm_dct)
     except:
         pass 

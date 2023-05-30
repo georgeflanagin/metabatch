@@ -33,7 +33,7 @@ from   urdecorators import trap
 from parse_slurm import parse_slurm_file
 from parse_config import parse_config_file
 verbose = False
-
+myargs = None
 ###
 # Credits
 ###
@@ -47,18 +47,20 @@ __status__ = 'in progress'
 __license__ = 'MIT'
 
 @trap
-def modify_slurm_file(slurm_dct: dict) -> dict:
+def modify_slurm_file(file: object) -> dict:
     """
     Rewrite slurm file based on the business rules and program configurations.
     """
-    print(slurm_dct) 
+    slurm_dct = parse_slurm_file(file)
+    #config = parse_config_file(myargs.config_dir)
+
+    slurm_dct_mod = slurm_dct #that will have to be replaced
+    return slurm_dct_mod
 
 
 @trap
 def modify_slurm_main(myargs:argparse.Namespace) -> int:
-    slurm_dct = parse_slurm_file(myargs.input)
-    config = parse_config_file(myargs.config_dir)
-    modify_slurm_file(slurm_dct)
+    print(modify_slurm_file(myargs.input))
     return os.EX_OK
 
 
