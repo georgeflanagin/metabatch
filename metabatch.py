@@ -52,7 +52,8 @@ from   urdecorators import trap
 # imports and objects that are a part of this project
 ###
 from parse_slurm import parse_slurm_file
-
+from parse_config import parse_config_file
+from read_pipe import read_pipe
 ###
 # Globals
 ###
@@ -68,6 +69,7 @@ caught_signals = [
 myargs = None
 mynetid = getpass.getuser()
 verbose = False
+mypwd = os.getcwd()
 
 @trap
 def handler(signum:int, stack:object=None) -> None:
@@ -82,9 +84,9 @@ def handler(signum:int, stack:object=None) -> None:
         handler_logger.debug('Rereading all configuration files.')
         metabatch_main(myargs)
 
-    elif signum in tuple(signal.SIGUSR2, signal.SIGQUIT, signal.SIGTERM, signal.SIGINT):
+    elif signum in {signal.SIGUSR2, signal.SIGQUIT, signal.SIGTERM, signal.SIGINT}:
         handler_logger.debug('Closing up.')
-        uu.fclose_all()
+        fileutils.fclose_all()
         sys.exit(os.EX_OK)
 
     else:
@@ -129,32 +131,25 @@ def metabatch_main(myargs:argparse.Namespace) -> int:
     #for filename in fileutils.all_files_in(myargs.config_dir):
         #config.update(p.read(filename))
 
-    # traverse all the files and directories in config_dir and, if not empty, read them
-    config_info = parse_config(myargs.config_dir)
-    print(config_info)  
-
-    # parse slurm parameters in the submitted file
-    params = parse_slurm_file('anagrammar.slurm')
-    print(params)
+        
     
- 
-    #submissions = fifo.FIFO(myargs.fifo)
-
-    #not myargs.debug and linuxutils.daemonize_me()
-    
-    #return metabatch_events(submissions)
+    not myargs.debug and linuxutils.daemonize_me()
+    os.chdir(mypwd)
+    submissions = read_pipe(myargs.fifo)
+    return metabatch_events(submissions)
 
 
 if __name__ == '__main__':
+    mypath = os.environ.get("METABATCHPATH","/etc/metabatch.d")
 
     parser = argparse.ArgumentParser(prog="metabatch", 
         description="What metabatch does, metabatch does best.")
 
-    parser.add_argument('-c', '--config-dir', type=str, default="/etc/metabatch.d",
+    parser.add_argument('-c', '--config-dir', type=str, default=mypath,
         help="Input file name.")
     parser.add_argument('-d', '--debug', action='store_true', 
         help="Run program interactively for debugging purposes.")
-    parser.add_argument('-f', '--fifo', type=str, default="/usr/local/metabatch/queue",
+    parser.add_argument('-f', '--fifo', type=str, default=os.path.join(mypath, "metapipe"),
         help="Name of the FIFO where SLURM jobs are submitted.")
     parser.add_argument('-o', '--output', type=str, default="",
         help="Name of the output (logging) file.")

@@ -50,25 +50,41 @@ __status__ = 'in progress'
 __license__ = 'MIT'
 
 @trap
-def read_pipe(pipe: object) -> None:
+def read_pipe(pipe: str) -> None:
     """
     Reads from a file pipe, modifies it and submits the new file to SLURM.
     """
     # read the file once it is submitted to pipe
     pipe = fifo.FIFO(pipe)
-    data = pipe.wait_for_data(60*60*24)
-    
-    # identify the file and who submitted it
-    netid = data[0].split(",")[0]
-    data = data[0].split(",")[1][:len(data)-2]
-    
-    # read the slurm file and modify it
-    data_mod = modify_slurm_file(data) 
-    mod_file = write_slurm_to_file(data, data_mod)
-    
-    # submit the job to SLURM
-    dorunrun(f"sudo -u {netid} command sbatch {mod_file}")
+    print(pipe) 
 
+    while True:
+        sys.stderr.write("Pipe is open.\n")
+        data = pipe(60*60*24*7)
+        sys.stderr.write(f"{data}")        
+
+        # identify the file and who submitted it
+        try:
+            netid = data[0].split(",")[0]
+            data_file = data[0].split(",")[1][:len(data)-2]
+        except Exception as e:
+            print(f"Bad message format. Got >>{data[0]}<<")
+            continue
+        
+        # read the slurm file and modify it
+        try:
+            data_mod = modify_slurm_file(data_file) 
+            mod_file = write_slurm_to_file(data_file, data_mod)
+            # submit the job to SLURM
+            print('''dorunrun(f"sudo -u {netid} command sbatch {mod_file}")''')
+
+        except Exception as e:
+            print(f"Exception: {e}")
+            print('''dorunrun(f"sudo -u {netid} command sbatch {data_file}")''')
+            continue
+
+        
+    
 
 @trap
 def read_pipe_main(myargs:argparse.Namespace) -> int:

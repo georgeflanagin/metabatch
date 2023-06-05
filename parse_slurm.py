@@ -19,7 +19,7 @@ if sys.version_info == min_py:
 import argparse
 import contextlib
 import getpass
-import regex as re
+import re
 mynetid = getpass.getuser()
 
 ###

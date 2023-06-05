@@ -18,7 +18,9 @@ if sys.version_info == min_py:
 ###
 import argparse
 import contextlib
+from datetime import datetime
 import getpass
+import time
 mynetid = getpass.getuser()
 
 ###
@@ -31,6 +33,7 @@ from   urdecorators import trap
 # imports and objects that are a part of this project
 ###
 from parse_slurm import parse_slurm_file 
+from modify_slurm import modify_slurm_file
 verbose = False
 
 ###
@@ -53,6 +56,9 @@ def write_slurm_to_file(filename: str, slurm_dct_mod: dict) -> None:
     with open(filename, "w") as slurm_mod_file:
         for key, val in slurm_dct_mod.items():
             slurm_mod_file.write(val)    
+        slurm_mod_file.write(f"\n#modified by metabatch on {datetime.now()}")
+        #last_updated_metabatch = time.ctime(os.path.getctime('metabatch.py'))
+        slurm_mod_file.write(f"\n#metabatch version {time.ctime(os.path.getctime('metabatch.py'))}")
     return slurm_mod_file 
 
 
@@ -61,8 +67,8 @@ def write_slurm_main(myargs:argparse.Namespace) -> int:
     try:
         slurm_dct = modify_slurm_file(myargs.input)
         write_slurm_to_file(myargs.input, slurm_dct)
-    except:
-        pass 
+    except Exception as e:
+        print(e)
     return os.EX_OK
 
 
