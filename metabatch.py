@@ -51,6 +51,7 @@ from   urdecorators import trap
 ###
 # imports and objects that are a part of this project
 ###
+from handler import handler
 from parse_slurm import parse_slurm_file
 from parse_config import parse_config_file
 from read_pipe import read_pipe
@@ -70,7 +71,7 @@ myargs = None
 mynetid = getpass.getuser()
 verbose = False
 mypwd = os.getcwd()
-
+'''
 @trap
 def handler(signum:int, stack:object=None) -> None:
     """
@@ -94,7 +95,7 @@ def handler(signum:int, stack:object=None) -> None:
             f"ignoring signal {signum}. Check list of handled signals."
             )
 
-
+'''
 @trap
 def metabatch_main(myargs:argparse.Namespace) -> int:
     """
@@ -104,7 +105,6 @@ def metabatch_main(myargs:argparse.Namespace) -> int:
 
     mylogger = logging.getLogger('metabatch')
     mylogger.setLevel(myargs.verbose)
-    #breakpoint()
     config = sloppytree.SloppyDict()
     p = configparser.ConfigParser()
 
@@ -126,7 +126,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(prog="metabatch", 
         description="What metabatch does, metabatch does best.")
 
-    parser.add_argument('-c', '--config-dir', type=str, default=mypath,
+    parser.add_argument('-c', '--config-dir', type=str, default="/usr/local/sw/metabatch/metabatch.d",
         help="Input file name.")
     parser.add_argument('-d', '--debug', action='store_true', 
         help="Run program interactively for debugging purposes.")

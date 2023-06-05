@@ -59,7 +59,8 @@ def read_pipe(pipe: str) -> None:
 
     while True:
         sys.stderr.write("Pipe is open.\n")
-        data = p(60*60*24*7)
+        data = p.wait_for_data(60*60*24*7)
+        #breakpoint()
         print("dd",data)
         sys.stderr.write(f"{data}")        
         breakpoint()
@@ -91,7 +92,7 @@ def read_pipe(pipe: str) -> None:
 
 @trap
 def read_pipe_main(myargs:argparse.Namespace) -> int:
-    read_pipe(myargs.input)    
+    #read_pipe(myargs.input)    
 
     return os.EX_OK
 
