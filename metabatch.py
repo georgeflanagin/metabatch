@@ -115,6 +115,7 @@ def metabatch_main(myargs:argparse.Namespace) -> int:
     
     #not myargs.debug and linuxutils.daemonize_me()
     os.chdir(mypwd)
+    breakpoint()
     read_pipe(myargs.fifo)
     return os.EX_OK
 
@@ -129,7 +130,7 @@ if __name__ == '__main__':
         help="Input file name.")
     parser.add_argument('-d', '--debug', action='store_true', 
         help="Run program interactively for debugging purposes.")
-    parser.add_argument('-f', '--fifo', type=str, default=os.path.join(mypath, "metapipe"),
+    parser.add_argument('-f', '--fifo', type=str, default="/usr/local/sw/metabatch/metapipe",
         help="Name of the FIFO where SLURM jobs are submitted.")
     parser.add_argument('-o', '--output', type=str, default="",
         help="Name of the output (logging) file.")
@@ -153,7 +154,8 @@ if __name__ == '__main__':
 
     for _ in caught_signals:
         try:
-            signal.signal(_, handler)
+            print(_)
+            #signal.signal(_, handler)
         except OSError as e:
             sys.stderr.write(f'cannot reassign signal {_}\n')
         else:

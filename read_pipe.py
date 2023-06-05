@@ -62,7 +62,7 @@ def read_pipe(pipe: str) -> None:
         data = p(60*60*24*7)
         print("dd",data)
         sys.stderr.write(f"{data}")        
-
+        breakpoint()
         # identify the file and who submitted it
         try:
             netid, data_file = data[0].split(',')
