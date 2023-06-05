@@ -55,30 +55,33 @@ def read_pipe(pipe: str) -> None:
     Reads from a file pipe, modifies it and submits the new file to SLURM.
     """
     # read the file once it is submitted to pipe
-    pipe = fifo.FIFO(pipe)
-    print(pipe) 
+    p = fifo.FIFO(pipe)
 
     while True:
         sys.stderr.write("Pipe is open.\n")
-        data = pipe(60*60*24*7)
+        data = p(60*60*24*7)
+        print("dd",data)
         sys.stderr.write(f"{data}")        
 
         # identify the file and who submitted it
         try:
-            netid = data[0].split(",")[0]
-            data_file = data[0].split(",")[1][:len(data)-2]
+            netid, data_file = data[0].split(',')
+            data_file = data_file.strip()
+            print(data_file)
         except Exception as e:
             print(f"Bad message format. Got >>{data[0]}<<")
             continue
         
         # read the slurm file and modify it
         try:
+            print("ddd")
             data_mod = modify_slurm_file(data_file) 
             mod_file = write_slurm_to_file(data_file, data_mod)
             # submit the job to SLURM
             print('''dorunrun(f"sudo -u {netid} command sbatch {mod_file}")''')
 
         except Exception as e:
+            print("fff")
             print(f"Exception: {e}")
             print('''dorunrun(f"sudo -u {netid} command sbatch {data_file}")''')
             continue

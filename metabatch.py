@@ -96,26 +96,6 @@ def handler(signum:int, stack:object=None) -> None:
 
 
 @trap
-def metabatch_events(submissions:fifo.FIFO) -> int:
-    """
-    This is the event loop. We read from the FIFO, examine
-    the input, and pass it along to sbatch.
-    """
-    global myargs
-
-    found_stop_event = False
-    event_logger = logging.getLogger('metabatch').getChild('events')
-    event_logger.setLevel(myargs.verbose)
-
-    while not found_stop_event:
-        # Wait a day for someone to submit .. something.
-        jobs = submissions(60*60*24) 
-        event_logger.debug(jobs)
-        
-    return os.EX_OK
-
-
-@trap
 def metabatch_main(myargs:argparse.Namespace) -> int:
     """
     Do a little setup, and then start the program as a daemon.
@@ -124,7 +104,7 @@ def metabatch_main(myargs:argparse.Namespace) -> int:
 
     mylogger = logging.getLogger('metabatch')
     mylogger.setLevel(myargs.verbose)
-
+    #breakpoint()
     config = sloppytree.SloppyDict()
     p = configparser.ConfigParser()
 
@@ -133,10 +113,10 @@ def metabatch_main(myargs:argparse.Namespace) -> int:
 
         
     
-    not myargs.debug and linuxutils.daemonize_me()
+    #not myargs.debug and linuxutils.daemonize_me()
     os.chdir(mypwd)
-    submissions = read_pipe(myargs.fifo)
-    return metabatch_events(submissions)
+    read_pipe(myargs.fifo)
+    return os.EX_OK
 
 
 if __name__ == '__main__':
