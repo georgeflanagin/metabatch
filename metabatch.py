@@ -51,6 +51,7 @@ from   urdecorators import trap
 ###
 # imports and objects that are a part of this project
 ###
+from handler import handler
 from parse_slurm import parse_slurm_file
 from parse_config import parse_config_file
 from read_pipe import read_pipe
@@ -70,7 +71,7 @@ myargs = None
 mynetid = getpass.getuser()
 verbose = False
 mypwd = os.getcwd()
-
+'''
 @trap
 def handler(signum:int, stack:object=None) -> None:
     """
@@ -94,7 +95,7 @@ def handler(signum:int, stack:object=None) -> None:
             f"ignoring signal {signum}. Check list of handled signals."
             )
 
-
+'''
 @trap
 def metabatch_main(myargs:argparse.Namespace) -> int:
     """
@@ -104,7 +105,6 @@ def metabatch_main(myargs:argparse.Namespace) -> int:
 
     mylogger = logging.getLogger('metabatch')
     mylogger.setLevel(myargs.verbose)
-    #breakpoint()
     config = sloppytree.SloppyDict()
     p = configparser.ConfigParser()
 
@@ -115,6 +115,7 @@ def metabatch_main(myargs:argparse.Namespace) -> int:
     
     #not myargs.debug and linuxutils.daemonize_me()
     os.chdir(mypwd)
+    #breakpoint()
     read_pipe(myargs.fifo)
     return os.EX_OK
 
@@ -129,7 +130,7 @@ if __name__ == '__main__':
         help="Input file name.")
     parser.add_argument('-d', '--debug', action='store_true', 
         help="Run program interactively for debugging purposes.")
-    parser.add_argument('-f', '--fifo', type=str, default=os.path.join(mypath, "metapipe"),
+    parser.add_argument('-f', '--fifo', type=str, default="/home/alina/metabatch/metapipe",
         help="Name of the FIFO where SLURM jobs are submitted.")
     parser.add_argument('-o', '--output', type=str, default="",
         help="Name of the output (logging) file.")
@@ -153,7 +154,8 @@ if __name__ == '__main__':
 
     for _ in caught_signals:
         try:
-            signal.signal(_, handler)
+            print(_)
+            #signal.signal(_, handler)
         except OSError as e:
             sys.stderr.write(f'cannot reassign signal {_}\n')
         else:
