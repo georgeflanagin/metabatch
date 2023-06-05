@@ -124,12 +124,12 @@ def xform_sbatch(s:str, limits: list) -> str:
     
     if is_cpu_line != None:
         cpu_requested = is_cpu_line.group(0).split("=")[1] 
-    
+        print(cpu_requested, int(limits["cpu"]))
         #if needed, adjust CPU
         if int(cpu_requested) >= int(limits["cpu"]):
             s = "".join((is_cpu_line.group(0).split("=")[0],"=", limits["cpu"], '\n'))
-
-    
+            
+     
     # changes to memory
     mem = re.compile(r"#SBATCH --mem=.*") 
     is_mem_line = re.match(mem, s)
@@ -166,8 +166,11 @@ def modify_slurm_file(file: object) -> dict:
             if key_word in line:
                 prog_run = prog
                 break 
-            else:
-                prog_run = 'unknown'
+            #else:
+            #    prog_run = 'unknown'
+    if prog_run == "":
+        prog_run = "unknown"
+
     limits = []
     
     # retrieves config information based on the program that the job is executing
@@ -184,7 +187,6 @@ def modify_slurm_file(file: object) -> dict:
         s = globals()["xform_"+k[1]](line, limits)
         #print(k, line)
         slurm_dct_mod[k] = s
-    
     # return {k: globals()[f'xform_{k[1]}'](line) for k, line in slurm_dct.items() }
 
     return slurm_dct_mod
@@ -192,11 +194,11 @@ def modify_slurm_file(file: object) -> dict:
 
 @trap
 def modify_slurm_main(myargs:argparse.Namespace) -> int:
-    print(convert_to_megabytes('10Gb'))
-    print(convert_to_megabytes('100mb'))
-    print(convert_to_megabytes('10KB'))
-    print(convert_to_megabytes('10G'))
-    print(convert_to_megabytes('3000g'))
+    #print(convert_to_megabytes('10Gb'))
+    #print(convert_to_megabytes('100mb'))
+    #print(convert_to_megabytes('10KB'))
+    #print(convert_to_megabytes('10G'))
+    #print(convert_to_megabytes('3000g'))
     
    
 
