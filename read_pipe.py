@@ -50,40 +50,56 @@ __status__ = 'in progress'
 __license__ = 'MIT'
 
 @trap
+def submit_file_to_slurm(filename: str, netid: str) ->  None:
+    """
+    Submits the modified file to SLURM on behalf of the user.
+    This will allow the user (aka orginal author of the file) have all the permissions 
+    to the modofied file.
+    """
+    return dorunrun(f"sudo -u {netid} command sbatch {filename}")
+
+@trap
 def read_pipe(pipe: str) -> None:
     """
     Reads from a file pipe, modifies it and submits the new file to SLURM.
     """
     # read the file once it is submitted to pipe
-    p = fifo.FIFO(pipe)
 
     while True:
+        p = fifo.FIFO(pipe, "non_block", reopen = True)
+        sys.stderr.write(f"{p=}")
+
         sys.stderr.write("Pipe is open.\n")
-        data = p.wait_for_data(60*60*24*7)
+        data = p(60*60*24*7)
+        del p
+
         #breakpoint()
-        print("dd",data)
-        sys.stderr.write(f"{data}")        
-        breakpoint()
+        sys.stderr.write(f"pipe returned {data=}\n")        
+        #breakpoint()
         # identify the file and who submitted it
         try:
             netid, data_file = data[0].split(',')
             data_file = data_file.strip()
-            print(data_file)
+            #print(data_file)
         except Exception as e:
-            print(f"Bad message format. Got >>{data[0]}<<")
+            sys.stderr.write(f"Bad message format. Got >>{data}<<\n")
             continue
         
         # read the slurm file and modify it
         try:
-            print("ddd")
+            
             data_mod = modify_slurm_file(data_file) 
-            mod_file = write_slurm_to_file(data_file, data_mod)
+            mod_file = write_slurm_to_file(netid, data_file, data_mod)
             # submit the job to SLURM
+            submit_file_to_slurm(mod_file, netid)
+            #print(netid,  mod_file)
+            #dorunrun(f"sudo -u {netid} command sbatch {mod_file}")
             print('''dorunrun(f"sudo -u {netid} command sbatch {mod_file}")''')
 
         except Exception as e:
-            print("fff")
             print(f"Exception: {e}")
+            #modification didn't happen so submit the original file
+            submit_file_to_slurm(data_file, netid)
             print('''dorunrun(f"sudo -u {netid} command sbatch {data_file}")''')
             continue
 
@@ -92,7 +108,7 @@ def read_pipe(pipe: str) -> None:
 
 @trap
 def read_pipe_main(myargs:argparse.Namespace) -> int:
-    #read_pipe(myargs.input)    
+    read_pipe(os.path.join(os.environ.get('METABATCHPATH'), 'metapipe'))    
 
     return os.EX_OK
 

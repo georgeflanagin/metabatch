@@ -106,7 +106,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(prog="parse_config", 
         description="What parse_config does, parse_config does best.")
     
-    parser.add_argument('-c', '--config-dir', type=str, default=os.environ.get("METABATCHPATH"),
+    parser.add_argument('-c', '--config-dir', type=str, default="/usr/local/sw/metabatch/metabatch.d",
         help="Input directory with configuration files.")
     parser.add_argument('-i', '--input', type=str, default="",
         help="Input filename.")
