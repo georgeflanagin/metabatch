@@ -21,11 +21,15 @@ import contextlib
 from datetime import datetime
 import getpass
 import time
+import random
+import string
+import tempfile
 mynetid = getpass.getuser()
 
 ###
 # From hpclib
 ###
+from dorunrun import dorunrun
 import linuxutils
 from   urdecorators import trap
 
@@ -48,25 +52,63 @@ __email__ = ['alina@richmond.edu']
 __status__ = 'in progress'
 __license__ = 'MIT'
 
+@trap 
+def create_mod_file(netid: str, ourtempfile:str, newfile:str) -> None:
+    """
+    Copy the contents of a tempfile to the new file, so that the user owns it. 
+    """
+    return dorunrun(f"sudo -u {netid} cp {ourtempfile} {newfile}")
+
+@trap
+def write_slurm_to_file(netid: str, filename: str, slurm_dct_mod: dict) -> None:
+
+
+
+    #create a temp file and name it with a random prefix
+    random_str = ''.join(random.choices(string.ascii_uppercase +
+                             string.digits, k=4)) #random string for the modified file name
+    temp = tempfile.NamedTemporaryFile(mode = "w+", suffix = "_"+filename, dir = os.getcwd(), delete = False)
+    print(temp.name)
+    for key, val in slurm_dct_mod.items():
+        temp.write(f"{val}")
+    dorunrun(f"chmod 644 {temp}")
+    dorunrun(f"sudo -u {netid} cp {temp} {os.getcwd()+filename}")
+    print(f"sudo -u {netid} cp {temp.name} {os.getcwd()+'/'+random_str+'_'+filename}")
+    temp.close()
+    '''
+    # write modified contents to the temporary file
+    with open(temp.name, "w") as slurm_mod_file:
+        for key, val in slurm_dct_mod.items():
+            slurm_mod_file.write(val)    
+    print(slurm_mod_file)
+    '''
+    # copy the contents of the temporary file to the newfile, owned by the submitter of the original file
+    new_mod_file = create_mod_file(netid, temp, temp.name) # let the new file have the same name as the temporary one
+    return new_mod_file 
+
+'''
 @trap
 def write_slurm_to_file(filename: str, slurm_dct_mod: dict) -> None:
     """
     Rewrites the slurm file based on a dictionary.
     """
-    with open(filename, "w") as slurm_mod_file:
+    random_str = ''.join(random.choices(string.ascii_uppercase +
+                             string.digits, k=4)) #random string for the modified file name
+    with open(filename+random_str, "w") as slurm_mod_file:
         for key, val in slurm_dct_mod.items():
             slurm_mod_file.write(val)    
-        slurm_mod_file.write(f"\n#modified by metabatch on {datetime.now()}")
-        #last_updated_metabatch = time.ctime(os.path.getctime('metabatch.py'))
-        slurm_mod_file.write(f"\n#metabatch version {time.ctime(os.path.getctime('metabatch.py'))}")
-    return slurm_mod_file 
 
+    return slurm_mod_file 
+'''
 
 @trap
 def write_slurm_main(myargs:argparse.Namespace) -> int:
+
     try:
         slurm_dct = modify_slurm_file(myargs.input)
-        write_slurm_to_file(myargs.input, slurm_dct)
+        write_slurm_to_file("ae9qg", myargs.input, slurm_dct)
+        print(write_slurm_to_file("ae9qg", myargs.input, slurm_dct))
+
     except Exception as e:
         print(e)
     return os.EX_OK

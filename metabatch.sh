@@ -1,20 +1,23 @@
-#!/bin/sh
-#This function overwrites original command sbatch.
+function trappipe
+{
+    :   
+}
+
+trap trappipe SIGPIPE
 
 function sbatch
 {
-	if [ -z "$1" ]; then
-        echo "syntax ..."
-        return
-	fi
-	
-	filename=$(realpath "$1")
- 	echo "$(whoami),$filename" > metapipe
-
+    touch sbatch.temp
+    rm -f sbatch.temp
+    echo "$(whoami),$1" > sbatch.temp
+    cat sbatch.temp > metapipe
 }
 
-
-function readpipe
+function pipereader
 {
-    python -c 'import read_pipe; print(read_pipe.read_pipe('metapipe'))'    
+    while :; do
+        echo $(< ./metapipe)
+    done
 }
+
+

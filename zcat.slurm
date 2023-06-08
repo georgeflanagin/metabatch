@@ -27,8 +27,3 @@ zcat data.dat.gz
 # Print the simulation end date/time
 date
 
-
-
-
-#modified by metabatch on 2023-06-05 16:25:26.727521
-#metabatch version Mon Jun  5 15:38:11 2023

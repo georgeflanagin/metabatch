@@ -85,6 +85,7 @@ class FIFO:
             queue_name:str, 
             mode:str='non_block', 
             delimiter:str=';',
+            reopen:bool=False,
             ignore:str="#"):
         """
         Safely open a new or existing FIFO for reading
@@ -96,6 +97,8 @@ class FIFO:
         mode -- one of the modes we support.
         delimiter -- to mark the boundary between parts of the written
             messages.
+        reopen -- if true, then close and reopen pipe after a successful
+            read of the data.
         ignore -- to facilitate testing, messages that begin like this
             will be discarded.
         """
@@ -105,6 +108,7 @@ class FIFO:
             if queue_name.startswith(os.sep) else 
             os.path.join(os.environ.get('PIPEDIR', os.getcwd()), queue_name) )
         self.mode = mode
+        self.reopen = reopen
         self.delimiter = "" if delimiter is None else delimiter
         self.ignore = "#" if ignore is None else ignore
 
@@ -114,6 +118,14 @@ class FIFO:
                 f"unknown mode {mode}. must be one of {tuple(FIFO.modes.keys())}."
                 )
 
+        self._open()
+
+
+    @trap
+    def _open(self) -> None:
+        """
+        Perform the low-level open.
+        """
         try:
             # If the file system entry is already present, and it is a 
             # pipe, try to open it.
@@ -149,7 +161,7 @@ class FIFO:
         except Exception as e:
             # We must not have permissions or something else at the OS level.
             raise Exception(f"Catastrophic failure {str(e)}") from None
-
+        
 
     @trap
     def __str__(self) -> str:
@@ -170,7 +182,21 @@ class FIFO:
         returns --  (read) the data
                     (write) the number of bytes written.
         """
-        return self.write(argument) if self.mode == 'w' else self.wait_for_data(argument)
+        if self.mode == 'w':
+            return self.write(argument)
+        
+        data = self.wait_for_data(argument)
+        sys.stderr.write(f"first {data=}\n")
+        if not data and self.reopen:
+            try:
+                os.close(self.fifo)
+            except:
+                pass
+            self._open()
+            data = self.wait_for_data(argument)
+            sys.stderr.write(f"second {data=}\n")
+
+        return data
 
 
     @trap
@@ -187,16 +213,13 @@ class FIFO:
         poll.register(self.fifo, select.POLLIN)
 
         try:
-            sys.stderr.write(f"polling\n")
+            # sys.stderr.write(f"polling\n")
             if (self.fifo, select.POLLIN) in poll.poll(how_long * 1000):
                 sys.stderr.write(f"received SIGPIPE\n")
                 data = os.read(self.fifo, io.DEFAULT_BUFFER_SIZE*16).decode('utf-8')
                 sys.stderr.write(f"{data=}\n")
                 data = [ _ for _ in data.split(self.delimiter) 
                     if _ and not _.startswith(self.ignore) ]
-            else:
-                sys.stderr.write(f"{self.fifo=} {select.POLLIN=} {poll.poll=}\n")
-
 
         except Exception as e:
             sys.stderr.write("Exception in FIFO: {e}")
@@ -206,7 +229,7 @@ class FIFO:
             # if data is None, then the assignment statement above failed
             # when reading from the pipe. This happens when there are no
             # writers to the pipe. So, we reopen and wait.
-            if data is None: 
+            if data is None and not self.reopen:  
                 sys.stderr.write("waited for Godot.")
                 sys.exit(os.EX_DATAERR)
 
@@ -251,7 +274,7 @@ def fifo_main(myargs:argparse.Namespace) -> int:
         return fifo_writer(myargs)
 
     sys.stderr.write(f"Let's open {myargs.pipe} with mode {myargs.mode}.\n")
-    p = FIFO(myargs.pipe, myargs.mode)
+    p = FIFO(myargs.pipe, myargs.mode, reopen=True)
     sys.stderr.write(f"{myargs.pipe} created.\n")
 
     i = 0
@@ -260,7 +283,7 @@ def fifo_main(myargs:argparse.Namespace) -> int:
         i += 1
         sys.stderr.write(f"Waiting {myargs.time} seconds for message in the pipe.\n")
         data = p(myargs.time)
-        sys.stderr.write(f"Read {data=}")
+        sys.stderr.write(f"Read {data=}\n")
         
     return os.EX_OK if i == myargs.count else os.EX_DATAERR
 
@@ -282,6 +305,8 @@ if __name__ == '__main__':
         help="Seconds to wait for data in the pipe.")
     parser.add_argument('-v', '--verbose', action='store_true',
         help="Be chatty about what is taking place")
+    parser.add_argument('-X', '--reopen', action='store_true',
+        help="Forces a close after reading, and a reopen.")
 
 
     myargs = parser.parse_args()

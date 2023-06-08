@@ -115,22 +115,22 @@ def metabatch_main(myargs:argparse.Namespace) -> int:
     
     #not myargs.debug and linuxutils.daemonize_me()
     os.chdir(mypwd)
-    #breakpoint()
+    # breakpoint()
     read_pipe(myargs.fifo)
     return os.EX_OK
 
 
 if __name__ == '__main__':
-    mypath = os.environ.get("METABATCHPATH","/etc/metabatch.d")
+    myenviron = os.environ.get("METABATCHPATH")
 
     parser = argparse.ArgumentParser(prog="metabatch", 
         description="What metabatch does, metabatch does best.")
 
-    parser.add_argument('-c', '--config-dir', type=str, default=mypath,
+    parser.add_argument('-c', '--config-dir', type=str, default=os.path.join(myenviron, "metabatch.d"),
         help="Input file name.")
     parser.add_argument('-d', '--debug', action='store_true', 
         help="Run program interactively for debugging purposes.")
-    parser.add_argument('-f', '--fifo', type=str, default="/home/alina/metabatch/metapipe",
+    parser.add_argument('-f', '--fifo', type=str, default=os.path.join(myenviron, "metapipe"),
         help="Name of the FIFO where SLURM jobs are submitted.")
     parser.add_argument('-o', '--output', type=str, default="",
         help="Name of the output (logging) file.")

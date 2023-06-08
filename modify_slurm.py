@@ -18,9 +18,11 @@ if sys.version_info < min_py:
 ###
 import argparse
 import contextlib
+from datetime import datetime
 import getpass
 import math
 import re
+import time
 mynetid = getpass.getuser()
 
 ###
@@ -124,7 +126,6 @@ def xform_sbatch(s:str, limits: list) -> str:
     
     if is_cpu_line != None:
         cpu_requested = is_cpu_line.group(0).split("=")[1] 
-        print(cpu_requested, int(limits["cpu"]))
         #if needed, adjust CPU
         if int(cpu_requested) >= int(limits["cpu"]):
             s = "".join((is_cpu_line.group(0).split("=")[0],"=", limits["cpu"], '\n'))
@@ -175,20 +176,22 @@ def modify_slurm_file(file: object) -> dict:
     
     # retrieves config information based on the program that the job is executing
     #dir_path = myargs.config_dir+"/config.d/"
-    dir_path = "/etc/metabatch.d/config.d/"
+    dir_path = os.getcwd()+"/metabatch.d/config.d/" 
     config = parse_config_file(dir_path)
     config_for_prog = {k: v["resource_limits"] for k, v in config.items() if k == dir_path+prog_run+".conf"}
     limits = config_for_prog[dir_path+prog_run+".conf"]
-    
     
 
     # call the functions to modify the lines based on their types
     for k, line in slurm_dct.items():
         s = globals()["xform_"+k[1]](line, limits)
-        #print(k, line)
         slurm_dct_mod[k] = s
-    # return {k: globals()[f'xform_{k[1]}'](line) for k, line in slurm_dct.items() }
 
+    # add lines that signify modification by metabatch in the end of the file
+    slurm_dct_mod[(len(slurm_dct)+1, "comment")] = f"\n#modified by metabatch on {datetime.now()}"
+    slurm_dct_mod[(len(slurm_dct)+2, "comment")] =f"\n#metabatch version {time.ctime(os.path.getctime('metabatch.py'))}" 
+
+    # return {k: globals()[f'xform_{k[1]}'](line) for k, line in slurm_dct.items() }
     return slurm_dct_mod
 
 
@@ -204,16 +207,17 @@ def modify_slurm_main(myargs:argparse.Namespace) -> int:
 
 
     modify_slurm_file(myargs.input)
-    #print(modify_slurm_file(myargs.input))
+    print(modify_slurm_file(myargs.input))
     return os.EX_OK
 
 
 if __name__ == '__main__':
-    
+    myenviron = os.environ.get("METABATCHPATH")   
+ 
     parser = argparse.ArgumentParser(prog="modify_slurm", 
         description="What modify_slurm does, modify_slurm does best.")
     
-    parser.add_argument('-c', '--config-dir', type=str, default=os.environ.get("METABATCHPATH", "/etc/metabatch.d"),
+    parser.add_argument('-c', '--config-dir', type=str, default="/usr/local/sw/metabatch/metabatch.d",
         help="Input directory with configuration files.")
     parser.add_argument('-i', '--input', type=str, default="",
         help="Input file name that contains SLURM job.")
