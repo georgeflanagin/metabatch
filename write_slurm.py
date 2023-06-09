@@ -86,7 +86,7 @@ def write_slurm_main(myargs:argparse.Namespace) -> int:
 
     try:
         slurm_dct = modify_slurm_file(myargs.input)
-        write_slurm_to_file("alina", myargs.input, slurm_dct)
+        write_slurm_to_file("ae9qg", myargs.input, slurm_dct)
         #print(write_slurm_to_file("alina", myargs.input, slurm_dct))
 
     except Exception as e:
