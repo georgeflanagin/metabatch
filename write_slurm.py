@@ -74,8 +74,9 @@ def write_slurm_to_file(netid: str, filename: str, slurm_dct_mod: dict) -> None:
         temp.write(f"{val}")
     temp.seek(0)
     dorunrun(f"chmod 644 {temp.name}")
-    dorunrun(f"sudo -u {netid} cp {temp.name} {os.getcwd()+'/'+random_str+'_'+filename}")
-    #print(f"sudo -u {netid} cp {temp.name} {os.getcwd()+'/'+random_str+'_'+filename}")
+    filename_split = os.path.splitext(filename)
+    dorunrun(f"sudo -u {netid} cp {temp.name} {filename_split[0]}{'_'+random_str}{filename_split[1]}")
+    print(f"sudo -u {netid} cp {temp.name} {filename_split[0]}{'_'+random_str}{filename_split[1]}")
     temp.close()
    
     # copy the contents of the temporary file to the newfile, owned by the submitter of the original file

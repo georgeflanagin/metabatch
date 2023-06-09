@@ -72,10 +72,12 @@ def read_pipe(pipe: str) -> None:
         sys.stderr.write("Pipe is open.\n")
         data = p(60*60*24*7)
         del p
+        pid = os.fork()
+        if pid: 
+            print(pid, "this is parent")
+            continue # then it is a parent process, and we want to exit, reopen pipe and read again.
 
-        #breakpoint()
         sys.stderr.write(f"pipe returned {data=}\n")        
-        #breakpoint()
         # identify the file and who submitted it
         try:
             netid, data_file = data[0].split(',')
@@ -85,59 +87,29 @@ def read_pipe(pipe: str) -> None:
             sys.stderr.write(f"Bad message format. Got >>{data}<<\n")
             continue
        
-        if os.getppid == 1: continue #parent process
 
         try:
-            pid = os.fork()
-            if pid: 
-                print(pid, "this is parent")
-                continue # then it is a parent process, and we want to exit, reopen pipe and read again.
-
-            else: #it is a child process
-                print(pid, "this is child")
-                data_mod = modify_slurm_file(data_file) 
-                mod_file = write_slurm_to_file(netid, data_file, data_mod)
-                
-                # submit the job to SLURM
-                submit_file_to_slurm(mod_file, netid)
-                print('''dorunrun(f"sudo -u {netid} command sbatch {mod_file}")''')
+            print(pid, "this is child")
+            data_mod = modify_slurm_file(data_file) 
+            mod_file = write_slurm_to_file(netid, data_file, data_mod)
+            
+            # submit the job to SLURM
+            submit_file_to_slurm(mod_file, netid)
+            print('''dorunrun(f"sudo -u {netid} command sbatch {mod_file}")''')
         
         except Exception as e:
             print(f"Exception: {e}")
             #modification didn't happen so submit the original file
             submit_file_to_slurm(data_file, netid)
             print('''dorunrun(f"sudo -u {netid} command sbatch {data_file}")''')
-            continue
 
 
         finally: #make sure the child process is killed after execution
             os._exit(os.EX_OK)
-        continue 
 
 
 
-        """ 
-        # read the slurm file and modify it
-        try:
-            
-            data_mod = modify_slurm_file(data_file) 
-            mod_file = write_slurm_to_file(netid, data_file, data_mod)
-            # submit the job to SLURM
-            submit_file_to_slurm(mod_file, netid)
-            #print(netid,  mod_file)
-            #dorunrun(f"sudo -u {netid} command sbatch {mod_file}")
-            print('''dorunrun(f"sudo -u {netid} command sbatch {mod_file}")''')
-
-        except Exception as e:
-            print(f"Exception: {e}")
-            #modification didn't happen so submit the original file
-            submit_file_to_slurm(data_file, netid)
-            print('''dorunrun(f"sudo -u {netid} command sbatch {data_file}")''')
-            continue
-
-        """ 
-    
-
+        
 @trap
 def read_pipe_main(myargs:argparse.Namespace) -> int:
     read_pipe(os.path.join(os.environ.get('METABATCHPATH'), 'metapipe'))    

@@ -7,8 +7,8 @@
 #SBATCH --mail-user=hpc@richmond.edu
 
 #SBATCH --partition=any
-#SBATCH --mem=10
-#SBATCH --cpus-per-task=2
+#SBATCH --mem=1000
+#SBATCH --cpus-per-task=10
 
 # Print the simulation start date/time
 date

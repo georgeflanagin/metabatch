@@ -57,8 +57,9 @@ import os
 import select
 import stat
 import sys
+import time
 
-verbose=False
+gverbose=False
 
 if sys.version_info < __required_version__:
     print(f"This code requires Python version {__required_version__} or later.")
@@ -66,14 +67,24 @@ if sys.version_info < __required_version__:
 
 from   urdecorators import trap
 
+###
+# When changes are made, this type of code can be tedious to 
+# debug. The message is written immediately, and includes the PID.
+###
+def fifo_message(s:object) -> int:
+    global gverbose
+    return sys.stderr.write(f"{os.getpid()} :: {time.time()} :: {s}\n") if gverbose else 0
+
+
 class FIFO:
     """
     Wrapper around the internals of pipe based IPC.
     """
-
+    ###
     # This class variable is a translation table. NOTE: all pipes
     # are binary. The class methods below will take care of the text
     # to binary translation. 
+    ###
     modes = {
         "non_block": os.O_RDONLY | os.O_NONBLOCK,
         "block": os.O_RDONLY,
@@ -84,9 +95,12 @@ class FIFO:
     def __init__(self, 
             queue_name:str, 
             mode:str='non_block', 
+            *,
             delimiter:str=';',
             reopen:bool=False,
-            ignore:str="#"):
+            ignore:str="#",
+            verbose:bool=False):
+
         """
         Safely open a new or existing FIFO for reading
         or writing. Note that if the function returns, it
@@ -101,7 +115,11 @@ class FIFO:
             read of the data.
         ignore -- to facilitate testing, messages that begin like this
             will be discarded.
+        verbose -- write notes to stderr.
         """
+
+        global gverbose
+        gverbose = self.verbose = verbose
     
         self.fifo = None
         self.name = ( queue_name 
@@ -154,13 +172,18 @@ class FIFO:
             raise Exception(f"unexpected problem with {self.name}: {str(e)}") from None
 
         try:
-            # We must be the reader, and the pipe does not exist.
-            os.mkfifo(self.name, 0o600)
+            ###
+            # We must be a reader, and the pipe does not exist. 
+            # Note that the mode allows others write, but not read.
+            ###
+            os.mkfifo(self.name, 0o622)
             self.fifo = os.open(self.name, FIFO.modes[self.mode])
         
         except Exception as e:
             # We must not have permissions or something else at the OS level.
             raise Exception(f"Catastrophic failure {str(e)}") from None
+
+        fifo_message(str(self))
         
 
     @trap
@@ -168,7 +191,9 @@ class FIFO:
         """
         Identify this pipe.
         """
-        return f"{self.name} is open {self.mode} using {self.delimiter} to delimit messages."
+        return f"""
+    {self.name} is open {self.mode}, reopen {self.reopen}, using {self.delimiter} to separate messages.
+            """
 
 
     @trap
@@ -181,20 +206,34 @@ class FIFO:
 
         returns --  (read) the data
                     (write) the number of bytes written.
+                    None on error.
         """
         if self.mode == 'w':
-            return self.write(argument)
+            try:
+                return self.write(argument)
+            except Exception as e:
+                fifo_message(f"write failed: {e}")
+                return None
+                
         
         data = self.wait_for_data(argument)
-        sys.stderr.write(f"first {data=}\n")
+        fifo_message(f"first read {data=}")
+
         if not data and self.reopen:
+            fifo_message("attempt close and reopen")
             try:
                 os.close(self.fifo)
             except:
+                fifo_message("already closed.") 
                 pass
+
+            fifo_message("reopening ...")
             self._open()
+            fifo_message("opened for reading.") 
+            ###
+            # Note the avoidance of a recursive call to the functor.
+            ###
             data = self.wait_for_data(argument)
-            sys.stderr.write(f"second {data=}\n")
 
         return data
 
@@ -213,16 +252,16 @@ class FIFO:
         poll.register(self.fifo, select.POLLIN)
 
         try:
-            # sys.stderr.write(f"polling\n")
+            fifo_message(f"polling")
             if (self.fifo, select.POLLIN) in poll.poll(how_long * 1000):
-                sys.stderr.write(f"received SIGPIPE\n")
+                fifo_message(f"received SIGPIPE!")
                 data = os.read(self.fifo, io.DEFAULT_BUFFER_SIZE*16).decode('utf-8')
-                sys.stderr.write(f"{data=}\n")
+                fifo_message(f"{data=}")
                 data = [ _ for _ in data.split(self.delimiter) 
                     if _ and not _.startswith(self.ignore) ]
 
         except Exception as e:
-            sys.stderr.write("Exception in FIFO: {e}")
+            fifo_message("Exception in FIFO: {e}")
 
         finally:
             poll.unregister(self.fifo)
@@ -230,7 +269,7 @@ class FIFO:
             # when reading from the pipe. This happens when there are no
             # writers to the pipe. So, we reopen and wait.
             if data is None and not self.reopen:  
-                sys.stderr.write("waited for Godot.")
+                fifo_message("waited for Godot.")
                 sys.exit(os.EX_DATAERR)
 
             return data
@@ -258,11 +297,22 @@ class FIFO:
 
 @trap
 def fifo_writer(myargs:argparse.Namespace) -> int:
-    sys.stderr.write(f"Let's write to {myargs.pipe}")
+    fifo_message(f"Let's write to {myargs.pipe}")
     p = FIFO(myargs.pipe, 'w')
 
     while text := input('Shout something into the pipe: '):
-        p(text)
+        try:
+            result = p(text)
+
+        except (KeyboardInterrupt, EOFError):
+            fifo_message("Apparently you have had enough ...")
+            break;
+
+        except Exception as e:
+            fifo_message(f"write failed: {e}")
+
+        finally:
+            fifo_message(f"{result=}")
 
     return os.EX_OK    
 
@@ -273,17 +323,17 @@ def fifo_main(myargs:argparse.Namespace) -> int:
     if myargs.mode == 'w':
         return fifo_writer(myargs)
 
-    sys.stderr.write(f"Let's open {myargs.pipe} with mode {myargs.mode}.\n")
-    p = FIFO(myargs.pipe, myargs.mode, reopen=True)
-    sys.stderr.write(f"{myargs.pipe} created.\n")
+    fifo_message(f"Let's open {myargs.pipe} with mode {myargs.mode}.")
+    p = FIFO(myargs.pipe, myargs.mode, verbose=myargs.verbose, reopen=myargs.reopen)
+    fifo_message(f"{myargs.pipe} created.")
 
     i = 0
     while i < myargs.count:
 
         i += 1
-        sys.stderr.write(f"Waiting {myargs.time} seconds for message in the pipe.\n")
+        fifo_message(f"Waiting {myargs.time} seconds for message in the pipe.")
         data = p(myargs.time)
-        sys.stderr.write(f"Read {data=}\n")
+        fifo_message(f"Read {data=}")
         
     return os.EX_OK if i == myargs.count else os.EX_DATAERR
 
@@ -296,7 +346,7 @@ if __name__ == '__main__':
 
     parser.add_argument('-c', '--count', type=int, default=sys.maxsize,
         help="Number of times to read from the pipe. The default is to read indefinitely many times.")
-    parser.add_argument('-m', '--mode', type=str, choices=('non_block', 'block', 'w')),
+    parser.add_argument('-m', '--mode', type=str, choices=('non_block', 'block', 'w'), default="non_block"),
     parser.add_argument('-o', '--output', type=str, default="",
         help="Output file name")
     parser.add_argument('-p', '--pipe', type=str, required='True',
