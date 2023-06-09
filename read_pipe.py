@@ -85,7 +85,7 @@ def read_pipe(pipe: str) -> None:
             sys.stderr.write(f"Bad message format. Got >>{data}<<\n")
             continue
        
-        #if os.getppid == 1: return True #parent process
+        if os.getppid == 1: continue #parent process
 
         try:
             pid = os.fork()
@@ -111,7 +111,8 @@ def read_pipe(pipe: str) -> None:
 
 
         finally: #make sure the child process is killed after execution
-            os._exit(os.EX_OK) 
+            os._exit(os.EX_OK)
+        continue 
 
 
 
