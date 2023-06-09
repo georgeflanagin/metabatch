@@ -68,13 +68,14 @@ def write_slurm_to_file(netid: str, filename: str, slurm_dct_mod: dict) -> None:
     #create a temp file and name it with a random prefix
     random_str = ''.join(random.choices(string.ascii_uppercase +
                              string.digits, k=4)) #random string for the modified file name
-    temp = tempfile.NamedTemporaryFile(mode = "w+") #, suffix = "_"+filename, dir = os.getcwd(), delete = False)
-    #print(temp.name)
+    temp = tempfile.NamedTemporaryFile(mode = "w+", dir = "/usr/local/sw/temp/") #, delete = False)
+    print("TEMPFILE NAME", temp.name)
     for key, val in slurm_dct_mod.items():
         temp.write(f"{val}")
     temp.seek(0)
     dorunrun(f"chmod 644 {temp.name}")
     filename_split = os.path.splitext(filename)
+    print(filename, filename_split)
     dorunrun(f"sudo -u {netid} cp {temp.name} {filename_split[0]}{'_'+random_str}{filename_split[1]}")
     print(f"sudo -u {netid} cp {temp.name} {filename_split[0]}{'_'+random_str}{filename_split[1]}")
     temp.close()

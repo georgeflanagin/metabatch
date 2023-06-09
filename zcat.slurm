@@ -6,9 +6,9 @@
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=hpc@richmond.edu
 
-#SBATCH --partition=any
+#SBATCH --partition=all
 #SBATCH --mem=1000
-#SBATCH --cpus-per-task=10
+#SBATCH --cpus-per-task=1
 
 # Print the simulation start date/time
 date
