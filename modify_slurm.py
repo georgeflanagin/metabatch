@@ -36,6 +36,7 @@ from   urdecorators import trap
 ###
 from parse_slurm import parse_slurm_file
 from parse_config import parse_config_file
+from fit_the_job import fit_the_job
 verbose = False
 myargs = None
 ###
@@ -118,7 +119,11 @@ def xform_sbatch(s:str, limits: list) -> str:
     """
     Modifies SBATCH lines.
     """
-    
+    mem_val = 0
+    cpu_requested = 0    
+    partition_requested = ""
+
+
     # changes to CPU
     cpu = re.compile(r"#SBATCH --cpus-per-task=.*")    
     is_cpu_line = re.match(cpu, s)
@@ -137,7 +142,7 @@ def xform_sbatch(s:str, limits: list) -> str:
     
     pattern = re.compile(r"(\d+)(?=(?:\/\d+)*\s*([MGKTmgkt]*[bB]*))")
     mem_regex = re.findall(pattern, s)
-
+    
     # modify the Sbatch --mem line only
     if is_mem_line != None:
         mem_val = convert_to_megabytes(is_mem_line.group())
@@ -145,7 +150,23 @@ def xform_sbatch(s:str, limits: list) -> str:
         #if needed, adjust memory
         if int(mem_val) >= int(limits["memory"]):
             s = "".join(("#SBATCH --mem=", limits["memory"], "\n")) # limits["memory"]) 
+
     
+    # changes to partition and nodelist 
+    partition = re.compile(r"#SBATCH --partition=.*")
+    is_partition_line = re.match(partition, s)
+
+    nodelist = re.compile(r"#SBATCH --nodelist=.*")
+    is_nodelist_line = re.match(nodelist, s)
+    
+    if is_partition_line != None:
+        partition_requested = is_partition_line.group().split('=')[1]
+        optimal_node, optimal_partition = fit_the_job(partition_requested, mem_val, cpu_requested) 
+        print(optimal_node, optimal_partition)
+        s = "".join(("#SBATCH --partition=", optimal_partition, "\n", 
+                        "#SBATCH --nodelist=", optimal_node, "\n"))
+
+ 
     return s
 
 @trap
