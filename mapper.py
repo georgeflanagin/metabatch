@@ -97,7 +97,7 @@ def mapper_main(myargs:argparse.Namespace) -> int:
         v="\n".join(sorted(v))
         print(f'{v}')
         print()
-
+    
     return os.EX_OK
 
 

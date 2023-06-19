@@ -18,7 +18,9 @@ if sys.version_info < min_py:
 ###
 import argparse
 import contextlib
+import configparser
 import getpass
+import heapdict
 mynetid = getpass.getuser()
 
 ###
@@ -32,8 +34,9 @@ from   sloppytree import SloppyTree
 # imports and objects that are a part of this project
 ###
 from mapper import SeekINFO
+from newslurmutils import *
 verbose = False
-
+myargs = None
 ###
 # Credits
 ###
@@ -45,6 +48,45 @@ __maintainer__ = 'George Flanagin'
 __email__ = 'gflanagin@richmond.edu'
 __status__ = 'in progress'
 __license__ = 'MIT'
+
+medium_condos = ['spdr09', 'spdr10', 'spdr11', 'spdr12', 'spdr13', 'spdr53', 'spdr55', 'spdr56', 'spdr57', 'spdr58'] 
+large_condos = ['spdr14', 'spdr15', 'spdr51', 'spdr52', 'spdr59']
+
+
+@trap
+def partitions_and_nodes() -> dict:
+    """
+    Read configuration file and populate the dictionary so that the name of 
+    the partition is the key and the nodes that belong to this partition are a list 
+    of values.
+    The form of the dictionary: {partition: [node, ...]}
+    """
+    global myargs
+    parser = configparser.ConfigParser()
+    config_info = {}
+    path_to_file = myargs.config
+    print(path_to_file)
+    try:
+        parser.read(path_to_file)
+    except Exception as e:
+        #parse_logger.error("Error parsing config file {path_to_file}")
+        print(e)
+
+    #populate the dictionary
+    for sect in parser.sections():
+        names = []
+        values = []
+        for name, value in parser.items(sect):
+            names.append(name)
+            values.append(value)
+        config_info[sect] = dict(zip(names, values))
+        #print(sect) 
+    if not len(config_info):
+        #parse_logger.error(f"No config files found in {config_dir}.")
+        print("directory is empty")
+
+    return config_info
+
 
 @trap
 def find_busiest_node(node_usage) -> str:
@@ -58,179 +100,164 @@ def find_busiest_node(node_usage) -> str:
     return busiest[0]
 
 @trap
-def find_the_node(total_mem:int, partition:list) -> str:
+def fit_to_memory(requested_mem: int, node_usage: dict) -> None:
     """
-    Finds the fit for the job within the partition specified.
+    Finds the node that can fit the job memory-wise.
     """
+    found_fit = False
+
     for i in range(len(node_usage)):
-        if found_fit == True:
-            print(f"job is allocated to {busiest_node}")
-            break
+    
+        if found_fit:
+            return busiest_node
 
         for node, mem_cpu in node_usage.items():
             busiest_node = find_busiest_node(node_usage)        
-            #print(node,mem_cpu)
-            #print(busiest_node)     
-            #print(requested_mem, node_usage.get(busiest_node))
-
-           
+            
             busiest_node_mem = node_usage.get(busiest_node)
-            if busiest_node in medium_partition:
+            if busiest_node in medium_condos:
                 total_mem = 768000
-            elif busiest_node in large_partition:
+            elif busiest_node in large_condos:
                 total_mem = 1536000
             else:
                 total_mem = 384000
-        
+
             busiest_node_free_mem = int(total_mem) - busiest_node_mem
-            print("requested: ", requested_mem)
-            print("busiest node used mem: ", busiest_node_mem)
-            print("total: ", total_mem)
-            print("busiest node available mem: ", busiest_node_free_mem)
             if requested_mem <= busiest_node_free_mem: 
                 found_fit = True
-                #print(f"job is allocated to {busiest_node}")
                 break    
-            else:
-                #print("looking for another node")
+            else: #look for another node
                 node_usage[busiest_node] = 0 
             
-     
+    return None
+
+
+
 @trap
-def fit_the_job(partition_req: str, requested_mem: int, requested_cpu: int) -> str:
+def fit_to_cpu(requested_cpu: int, cpu_usage: dict, mem_fit_node: str) -> bool:
+    """
+    Finds the node that can fit the job cpu-wise.
+    """
+    cpu = cpu_usage[mem_fit_node] 
+    if requested_cpu <= cpu: 
+        return True
+    return False     
+
+@trap 
+def fit_to_priority(requested_partition: str, prioritized_partitions: dict) -> str:
+    """
+    Checks the priority of the node found.
+    If the node belongs to the prioritized list, the fit is found. 
+    """
+    
+
+    return None
+ 
+
+@trap 
+def set_priority(user: str, req_partition:str, other_partitions: dict) -> dict:
+    """
+    Sets priority for the specific user to the partitions.
+    
+    The highest priority (1) is given to the node of requested partition.
+    The second priority (2) is given to the condos (if one belongs to any).
+    The last priority (3, 4, 5) is given to community nodes in the order - basic, medium, large.
+    """
+    
+    priorities = heapdict.heapdict() # set lowest number to the highest priority
+    priorities["basic"] = 3
+    priorities["medium"] = 4
+    priorities["large"] = 5
+
+        #example
+    # user_netid = "ab9mh"
+    # requested_partition = 100
+    # check if has access to any special partitions. If so, give the nodes priority = 70
+    # basic = 50
+    # medium = 30
+    # large = 10
+    priorities[f"{req_partition}"] = 1
+    
+    #see if the user is a part of some condo and if so, set priority 2 for this partition
+    user_groups = dorunrun(f"groups {user}", return_datatype = str).split(":")[1]
+    #print("groups the user belongs to", user_groups.split(":")[1])
+    condos = partitions_and_nodes()
+    for condo, val in condos.items():
+        if condo!= "sizes":
+            allowed_users = condos[condo]['allowed_users']
+            #print(user_groups, "--",  allowed_users) 
+            overlap = set(user_groups.split()).intersection(allowed_users.split())#[value for value in user_groups if value in allowed_users]
+            print(overlap)
+            if len(overlap) != 0:
+                priorities[f"{condo}"] = 2    
+    
+
+    return list(priorities.items())
+
+@trap
+def fit_the_job(requested_mem: int, requested_cpu: int) -> str:
     """
     Finds the busiest node where the job can fit.
     """
-    basic_partition = ['spdr01', 'spdr02', 'spdr03', 'spdr04', 'spdr05', 'spdr06', 'spdr07', 'spdr08']
-    medium_partition = ['spdr09', 'spdr10', 'spdr11', 'spdr12', 'spdr13', 'spdr53', 'spdr55', 'spdr56', 'spdr57', 'spdr58'] 
-    large_partition = ['spdr14', 'spdr15', 'spdr51', 'spdr52', 'spdr59']
-    erickson_condo = []
-    johnson_condo = []
-    parish_condo = []    
-
-    found_fit = False
+    node_usage = {} #usage of memory
+    cpu_usage = {} #usage of cpu
     data = SeekINFO()
-    node_usage = SloppyTree()
-    
 
     for line in ( _ for _ in data.stdout.split('\n')[1:] if _ ):
         node, free, total, status, true_cores, cores = line.split()
         cores = cores.split('/')
-        used_mem = int(total) - int(free)
-        
-        # populate sloppy tree with (node: mem, cpu, partition)
-        node_usage[node].mem = used_mem # how much memory is being used
-        node_usage[node].cpu = int(cores[0]) # how many cpus are being used
-        if node in basic_partition:
-            node_usage[node].partition = "basic"
-        elif node in medium_partition:
-            node_usage[node].partition = "medium"
-        elif node in large_partition:
-            node_usage[node].partition = "large"
-        else:
-            node_usage[node].partition = partition_req 
-    print(node_usage)
-    # sort so that the busiest (in terms of memory) node is the first one in the list
-    node_usage = sorted( (((v.mem, v.cpu, v.partition), k) for k, v in node_usage.items()), reverse=True)
-    print(node_usage)
+        used = int(total) - int(free)
+        node_usage[node] = int(used) #usage of memory
+        cpu_usage[node] = 52 - int(cores[0]) #find out how many CPUs are available
 
-    basic_partition = []
-    for item in node_usage:
-        if node_usage.partition == "basic":
-            basic_partition.append(item) 
-
-    print(node_usage)
-
-    sys.exit(os.EX_OK)
+    # sorted dictionary results in the list of tuples
+    node_usage = sorted( ((v, k) for k, v in node_usage.items()), reverse=True)
+    # convert the list of tuples into a dictionary
+    node_usage = dict( (k,v) for v, k in node_usage)
    
-    partition_optimal = ""
-
-    if partition_req == "basic" or partition_optimal == "basic":
-        node = find_the_node(384000, basic_partition) #finds the fit within basic partition
-        # if there is no fit within the basic partition, look for the fit in the medium partition
-        if node == None:
-            partition_optimal = "medium"    
-
-    if partition_req == "medium" or partition_optimal == "medium":
-        node = find_the_node(768000, medium_partition) 
-        if node == None:
-            partition_optimal = "large"
-
-    if partition_req == "large" or partition_optimal == "large":
-        node = find_the_node(1536000, large_partition)
-        if node == None:
-            partition_optimal = partition_req #return the partition that was initially requested
+    complete_fit_node = False
+ 
+    for i in range(len(node_usage)):    
+        mem_fit_node = fit_to_memory(requested_mem, node_usage)
     
+        if mem_fit_node != None: 
+            complete_fit_node = fit_to_cpu(requested_cpu, cpu_usage, mem_fit_node)
 
-    ##### put this in a finction called find_the_node
-    '''
-    for i in range(len(node_usage)):
-        if found_fit == True:
-            print(f"job is allocated to {busiest_node}")
+        if complete_fit_node == True:
+            print(f"job that requested {requested_mem, requested_cpu} is allocated to {mem_fit_node}")
             break
+        elif mem_fit_node != None:
+            del node_usage[mem_fit_node]    
+        else:
+            print(f"job that requested {requested_mem, requested_cpu} could not be allocated")
 
-        for node, mem_cpu in node_usage.items():
-            busiest_node = find_busiest_node(node_usage)        
-            #print(node,mem_cpu)
-            #print(busiest_node)     
-            #print(requested_mem, node_usage.get(busiest_node))
-
-           
-            busiest_node_mem = node_usage.get(busiest_node)
-            if busiest_node in medium_partition:
-                total_mem = 768000
-            elif busiest_node in large_partition:
-                total_mem = 1536000
-            else:
-                total_mem = 384000
-        
-            busiest_node_free_mem = int(total_mem) - busiest_node_mem
-            print("requested: ", requested_mem)
-            print("busiest node used mem: ", busiest_node_mem)
-            print("total: ", total_mem)
-            print("busiest node available mem: ", busiest_node_free_mem)
-            if requested_mem <= busiest_node_free_mem: 
-                found_fit = True
-                #print(f"job is allocated to {busiest_node}")
-                break    
-            else:
-                #print("looking for another node")
-                node_usage[busiest_node] = 0 
-            
-    ''' 
-
-    
-    #### this is to find what partition requested and what nodes to explore. not working for now
-    """
-    ### find info about partition
-    cmd = 'sinfo -o "%n %P"'
-    d = SloppyTree(dorunrun(cmd, return_datatype=dict))
-    print(d) 
-    for line in ( _ for _ in d.stdout.split('\n')[1:] if _ ):
-        n, partition = line.split()
-        
-    if node == n and n in 
-    """
-
-    return node, partition
+    return None 
 
 @trap
 def fit_the_job_main(myargs:argparse.Namespace) -> int:
-    
-    print(fit_the_job("somecondo", 340000, 10))
-    fit_the_job("medium", 300000, 12)
+
+    #print(set_priority("gflanagi", "basic", "smth")) 
+    print(parse_node_info())
+    print(parse_sinfo())
+ 
+    #fit_the_job(340000, 150)
+    #fit_the_job(30000000, 12)
     #fit_the_job(240000, 20)
     #fit_the_job(20000, 6)
     #fit_the_job(600000, 24)
+    
     return os.EX_OK
 
 
 if __name__ == '__main__':
+    myenviron = os.environ.get("METABATCHPATH") 
     
     parser = argparse.ArgumentParser(prog="fit_the_job", 
         description="What fit_the_job does, fit_the_job does best.")
 
     parser.add_argument('-i', '--input', type=str, default="",
+        help="Input file name.")
+    parser.add_argument('-c', '--config', type=str, default=os.path.join(myenviron, 'nodes.conf'),
         help="Input file name.")
     parser.add_argument('-o', '--output', type=str, default="",
         help="Output file name")
