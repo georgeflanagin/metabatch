@@ -19,6 +19,7 @@ if sys.version_info < min_py:
 import argparse
 import contextlib
 import curses
+import curses.panel
 from curses import wrapper
 import getpass
 import time
@@ -73,6 +74,22 @@ def prototype(stdscr: object):
     # one window will have cpu, another - memory
     mapper_win = curses.newpad(100, 100)
 
+    screen = curses.initscr()
+    cols_tot = curses.COLS
+    rows_tot = curses.LINES
+    cols_mid = int(0.5*cols_tot)   ## middle point of the window
+    rows_mid = int(0.5*rows_tot)
+    pad11 = curses.newpad(rows_mid, cols_mid)
+    pad12 = curses.newpad(rows_mid, cols_mid)
+    
+    pad11.addstr(0, 0, "upper left corner")
+    pad12.addstr(0, 0, "upper right corner")
+
+    pad11.refresh(0,0, 0,0, rows_mid,cols_mid)
+    pad12.refresh(0,0, 0,cols_mid, rows_mid,cols_tot-1)
+
+    '''
+
     for k, v in draw_map().items():
         mapper_win.clear()
 
@@ -84,7 +101,7 @@ def prototype(stdscr: object):
             time.sleep(2)
             mapper_win.addstr("\n")
     
-
+    '''
     """
     for i in range(2):
         stdscr.clear()
@@ -99,6 +116,49 @@ def prototype(stdscr: object):
     """
     stdscr.getch()
 
+    height,width = screen.getmaxyx()
+
+    window = curses.newwin(1,1,1,1)
+    window2 = curses.newwin(height -2 ,(width//2)-10, 1,width//2+1)
+
+    left_panel = curses.panel.new_panel(window)
+    right_panel = curses.panel.new_panel(window2)
+
+    window.border('|', '|', '-', '-', '+', '+', '+', '+')
+    window2.border('|', '|', '-', '-', '+', '+', '+', '+')
+
+    curses.panel.update_panels()
+    curses.doupdate()
+
+    running = True
+    x = 0
+    while ( running  ):
+        # height,width = screen.getmaxyx()
+        k = window.getch()
+        if k == curses.KEY_RESIZE:
+            window2.erase()
+            window.erase()
+            
+            #window2.addstr(0,0, "resizing works")
+
+            # h, w = screen.getmaxyx()
+            height,width = screen.getmaxyx()
+            window2.resize(height - 2 ,(width//2)-10)
+            window.resize(height - 2,(width//2) - 10)
+            left_panel.replace(window)
+            right_panel.replace(window2)
+            left_panel.move(0,0)
+            right_panel.move(0,width//2)
+            window2.border('|', '|', '-', '-', '+', '+', '+', '+')
+            window.border('|', '|', '-', '-', '+', '+', '+', '+')
+        if k == ord('q') or x >= 10:
+            running = False
+            curses.endwin()
+        window2.addstr(1, 1, "hehehhe")
+
+        window2.refresh()
+        curses.panel.update_panels()
+        curses.doupdate()
 
 
     stdscr.clear() #clear the screen

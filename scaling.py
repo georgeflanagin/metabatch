@@ -96,6 +96,7 @@ def row(used:int, max_avail:int, scale:int=80, x:str="X", _:str="_", ends=('[', 
 @trap
 def scaling_main(myargs:argparse.Namespace) -> int:
     args = ( 
+        (10, 20),
         (0, 40),
         (0, 200),
         (250, 200),
@@ -104,7 +105,7 @@ def scaling_main(myargs:argparse.Namespace) -> int:
         )
 
     for pair in args:
-        print(row(pair[0], pair[1]))
+        print(row(pair[0], pair[1], scale=25))
 
     return os.EX_OK
 
