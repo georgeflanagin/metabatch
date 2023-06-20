@@ -78,9 +78,11 @@ def map_cores(stdscr: object) -> None:
     #cores_win = curses.newpad((curses.LINES - 1), int((curses.COLS - 1)/2))
 
     stdscr.clear()
-    
+
+    '''    
     cores_info = draw_map().get("cores")
     cores="\n".join(sorted(cores_info))
+    
 
     cols_tot = curses.COLS - 1
     rows_tot = curses.LINES - 1
@@ -112,16 +114,71 @@ def map_cores(stdscr: object) -> None:
     mem_pad.refresh(0,0, 0,cols_mid, rows_tot,cols_tot-1)
     
     stdscr.getch()
-   # Check if screen was re-sized (True or False)
-    resize = curses.is_term_resized(y, x)
+   
 
-    # Action in loop if resize is True:
-    if resize is True:
-        y, x = screen.getmaxyx()
-        screen.clear()
-        curses.resizeterm(y, x)
-        screen.refresh()
+    '''
 
+
+
+
+    cores_info = draw_map().get("cores")
+    cores="\n".join(sorted(cores_info))
+
+
+
+    # resize window if needed
+    height,width = screen.getmaxyx()
+
+    window = curses.newwin(1,1,1,1)
+    #window2 = curses.newwin(height -2 ,(width//2)-10, 1,width//2+1)
+    
+    window2 = curses.newwin(0 ,(width//2)-10, 1,width//2+1)
+
+    left_panel = curses.panel.new_panel(window)
+    right_panel = curses.panel.new_panel(window2)
+
+    window.border('|', '|', '-', '-', '+', '+', '+', '+')
+    window2.border('|', '|', '-', '-', '+', '+', '+', '+')
+
+    curses.panel.update_panels()
+    curses.doupdate()
+
+    running = True
+    x = 0
+    while ( running  ):
+        # height,width = screen.getmaxyx()
+        k = window.getch()
+        if k == curses.KEY_RESIZE:
+            window2.erase()
+            window.erase()
+            
+            #window2.addstr(0,0, "resizing works")
+
+            # h, w = screen.getmaxyx()
+            height,width = screen.getmaxyx()
+            window2.resize(height - 2 ,(width//2)-10)
+            window.resize(height - 2,(width//2) - 10)
+            left_panel.replace(window)
+            right_panel.replace(window2)
+            left_panel.move(0,0)
+            right_panel.move(0,width//2)
+            window2.border('|', '|', '-', '-', '+', '+', '+', '+')
+            window.border('|', '|', '-', '-', '+', '+', '+', '+')
+        if k == ord('q') or x >= 10:
+            running = False
+            curses.endwin()
+        window2.addstr(1, 1, cores)
+        #window.addstr(1, 1, cores)
+        window.refresh()
+        window2.refresh()
+        curses.panel.update_panels()
+        curses.doupdate()
+
+
+    stdscr.clear() #clear the screen
+    stdscr.addstr(10, 2, "hello world") #row to place the string, column, string 
+    stdscr.addstr(20, 20, "middle of the screen")
+    stdscr.addstr(30, 30, "colors", curses.color_pair(1)) 
     pass
 
 
