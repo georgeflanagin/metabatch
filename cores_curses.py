@@ -23,6 +23,7 @@ import curses.panel
 from curses import wrapper
 import getpass
 import time
+import math
 mynetid = getpass.getuser()
 
 ###
@@ -65,9 +66,9 @@ def get_mem_info() -> dict:
     for line in ( _ for _ in data.stdout.split('\n')[1:] if _ ):
         node, free, total, status, true_cores, cores = line.split()
         cores = cores.split('/')
-        used = int(total) - int(free)
-        memory_map[node] = (used, int(total))
-        core_map_and_mem.append(f"{node} {scaling.row(cores[0], true_cores)} {used} / {total}")
+        used = (int(total) - int(free))/1000 # GB
+        
+        core_map_and_mem.append(f"{node} {scaling.row(cores[0], true_cores)} {math.ceil(used)} / {math.ceil(int(total)/1000)}")
 
     return core_map_and_mem
 
@@ -109,13 +110,9 @@ def map_cores(stdscr: object) -> None:
     # resize window if needed
     height,width = stdscr.getmaxyx()
 
-    window = curses.newwin(1,1,1,1)
     window2 = curses.newwin(0 ,0, 1,1)
     
-    
-
-    left_panel = curses.panel.new_panel(window)
-    right_panel = curses.panel.new_panel(window2)
+    left_panel = curses.panel.new_panel(window2)
 
     curses.panel.update_panels()
     curses.doupdate()
@@ -135,15 +132,12 @@ def map_cores(stdscr: object) -> None:
             pass 
 
         #work around window resize
-        k = window.getch()
+        k = window2.getch()
         if k == curses.KEY_RESIZE:
-            #window2.erase()
-            #window.erase()
             
             height,width = stdscr.getmaxyx()
             window2.resize(height, width)
-            window.resize(height, width)
-            left_panel.replace(window)
+            left_panel.replace(window2)
             left_panel.move(0,0)
         if k == ord('q'): 
             running = False
