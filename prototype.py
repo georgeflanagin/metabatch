@@ -19,7 +19,6 @@ if sys.version_info < min_py:
 import argparse
 import contextlib
 import curses
-import curses.panel
 from curses import wrapper
 import getpass
 import time
@@ -72,23 +71,8 @@ def prototype(stdscr: object):
 
     # windows are needed so that you can refresh them independently
     # one window will have cpu, another - memory
-    mapper_win = curses.newpad(100, 100)
-
-    screen = curses.initscr()
-    cols_tot = curses.COLS
-    rows_tot = curses.LINES
-    cols_mid = int(0.5*cols_tot)   ## middle point of the window
-    rows_mid = int(0.5*rows_tot)
-    pad11 = curses.newpad(rows_mid, cols_mid)
-    pad12 = curses.newpad(rows_mid, cols_mid)
-    
-    pad11.addstr(0, 0, "upper left corner")
-    pad12.addstr(0, 0, "upper right corner")
-
-    pad11.refresh(0,0, 0,0, rows_mid,cols_mid)
-    pad12.refresh(0,0, 0,cols_mid, rows_mid,cols_tot-1)
-
     '''
+    mapper_win = curses.newpad(100, 100)
 
     for k, v in draw_map().items():
         mapper_win.clear()
@@ -102,26 +86,14 @@ def prototype(stdscr: object):
             mapper_win.addstr("\n")
     
     '''
+
+    """
     v = draw_map().get('cores')
     v="\n".join(sorted(v))
-    """
-    for i in range(2):
-        stdscr.clear()
-        color = BLUE_AND_YELLOW
-
-        if i%2 == 0:
-            color = CYAN_AND_MAGENTA
-
-        stdscr.addstr("changing colors", color)
-        stdscr.refresh()    
-        time.sleep(1)
-    """
-    #stdscr.getch()
-
-    height,width = screen.getmaxyx()
+    height,width = stdscr.getmaxyx()
 
     window = curses.newwin(1,1,1,1)
-    #window2 = curses.newwin(height -2 ,(width//2)-10, 1,width//2+1)
+    window2 = curses.newwin(height -2 ,(width//2)-10, 1,width//2+1)
     #window2 = curses.newwin(height -2 ,0, 1,1)
 
     left_panel = curses.panel.new_panel(window)
@@ -145,7 +117,7 @@ def prototype(stdscr: object):
             #window2.addstr(0,0, "resizing works")
 
             # h, w = screen.getmaxyx()
-        height,width = screen.getmaxyx()
+        height,width = stdscr.getmaxyx()
         #window2.resize(height - 2 ,(width//2)-10)
 
         window.resize(height - 2,(width//2) - 10)
@@ -164,8 +136,7 @@ def prototype(stdscr: object):
         window2.refresh()
         curses.panel.update_panels()
         curses.doupdate()
-
-
+    """
     stdscr.clear() #clear the screen
     stdscr.addstr(10, 2, "hello world") #row to place the string, column, string 
     stdscr.addstr(20, 20, "middle of the screen")

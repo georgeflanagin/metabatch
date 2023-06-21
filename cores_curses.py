@@ -19,6 +19,7 @@ if sys.version_info < min_py:
 import argparse
 import contextlib
 import curses
+import curses.panel
 from curses import wrapper
 import getpass
 import time
@@ -48,6 +49,30 @@ __email__ = 'gflanagin@richmond.edu'
 __status__ = 'in progress'
 __license__ = 'MIT'
 
+@trap
+def get_mem_info() -> dict:
+
+    data = SeekINFO()
+    memory_map = {}
+    core_map_and_mem = []
+   
+    # We don't need the header row here is an example line:
+    #
+    # spdr12 424105 768000 up 52 12/40/0/52
+
+
+    core_map_and_mem.append("Node   Core Usage                                            Used / Total Memory\n")
+    for line in ( _ for _ in data.stdout.split('\n')[1:] if _ ):
+        node, free, total, status, true_cores, cores = line.split()
+        cores = cores.split('/')
+        used = int(total) - int(free)
+        memory_map[node] = (used, int(total))
+        core_map_and_mem.append(f"{node} {scaling.row(cores[0], true_cores)} {used} / {total}")
+
+    return core_map_and_mem
+
+
+
 
 @trap
 def map_cores(stdscr: object) -> None:
@@ -62,83 +87,35 @@ def map_cores(stdscr: object) -> None:
     curses.init_pair(2, curses.COLOR_CYAN, curses.COLOR_MAGENTA)
     curses.init_pair(3, curses.COLOR_BLUE, curses.COLOR_BLACK)
     curses.init_pair(4, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
+    curses.init_pair(5, curses.COLOR_GREEN, curses.COLOR_BLACK)
+    curses.init_pair(6, curses.COLOR_BLACK, curses.COLOR_YELLOW)
 
     #way 2 to use the color, uses a variable assignment
     BLUE_AND_YELLOW = curses.color_pair(1) 
     CYAN_AND_MAGENTA = curses.color_pair(2)
     BLUE_AND_BLACK = curses.color_pair(3)
     MAGENTA_AND_BLACK = curses.color_pair(4)
-
-    # to get the coordinates of the screen
-    # (curses.LINES - 1, curses.COLS - 1)
-
-    # windows are needed so that you can refresh them independently
-    # one window will have cpu, another - memory
-    #cores_win = curses.newpad((curses.LINES - 1), int((curses.COLS - 1)/2))
-    #cores_win = curses.newpad((curses.LINES - 1), int((curses.COLS - 1)/2))
+    GREEN_AND_BLACK = curses.color_pair(5)
+    BLACK_AND_YELLOW = curses.color_pair(6)
 
     stdscr.clear()
-
-    '''    
-    cores_info = draw_map().get("cores")
-    cores="\n".join(sorted(cores_info))
+    #stdscr.bkgd(' ',BLACK_AND_YELLOW)
+    #stdscr.refresh()
+    cores="\n".join(sorted(get_mem_info()))
+    cores += "\n\nPress q to exit"
+    #node, core_map, mem_used, mem_total = cores.split(' ')
     
-
-    cols_tot = curses.COLS - 1
-    rows_tot = curses.LINES - 1
-    cols_mid = int(0.5*cols_tot)   ## middle point of the window
-    rows_mid = int(0.5*rows_tot)
-    
-    cores_pad = curses.newpad(rows_mid, cols_mid)
-    mem_pad = curses.newpad(rows_mid, cols_mid)
-  
-    for k, v in draw_map().items():
-        cores_pad.clear()
-        #mem_win.clear()
-
-        if k == "cores": 
-            #cores_pad.clear()
-            v="\n".join(sorted(v))
-            cores_pad.addstr(0, 0, v, BLUE_AND_BLACK)
-            cores_pad.refresh(0,0, 0,0, rows_tot,cols_mid)
-            cores_pad.getch()
-            #time.sleep(10)
-        else:
-            #mem_win.clear()
-            v="\n".join(sorted(v))
-            mem_pad.addstr(0, 0, v, MAGENTA_AND_BLACK)
-            mem_pad.refresh(0,0, 0,cols_mid, rows_tot,cols_tot-1)
-            #time.sleep(2)
-            mem_pad.addstr("\n")
-    cores_pad.refresh(0,0, 0,0, rows_tot,cols_mid)  
-    mem_pad.refresh(0,0, 0,cols_mid, rows_tot,cols_tot-1)
-    
-    stdscr.getch()
-   
-
-    '''
-
-
-
-
-    cores_info = draw_map().get("cores")
-    cores="\n".join(sorted(cores_info))
-
-
 
     # resize window if needed
-    height,width = screen.getmaxyx()
+    height,width = stdscr.getmaxyx()
 
     window = curses.newwin(1,1,1,1)
-    #window2 = curses.newwin(height -2 ,(width//2)-10, 1,width//2+1)
+    window2 = curses.newwin(0 ,0, 1,1)
     
-    window2 = curses.newwin(0 ,(width//2)-10, 1,width//2+1)
+    
 
     left_panel = curses.panel.new_panel(window)
     right_panel = curses.panel.new_panel(window2)
-
-    window.border('|', '|', '-', '-', '+', '+', '+', '+')
-    window2.border('|', '|', '-', '-', '+', '+', '+', '+')
 
     curses.panel.update_panels()
     curses.doupdate()
@@ -146,39 +123,34 @@ def map_cores(stdscr: object) -> None:
     running = True
     x = 0
     while ( running  ):
-        # height,width = screen.getmaxyx()
+        
+        #display the cores map for each node
+        try:
+            window2.addstr(0, 0, cores, GREEN_AND_BLACK)
+            window.refresh()
+            window2.refresh()
+            
+        except:
+            window2.refresh()
+            pass 
+
+        #work around window resize
         k = window.getch()
         if k == curses.KEY_RESIZE:
-            window2.erase()
-            window.erase()
+            #window2.erase()
+            #window.erase()
             
-            #window2.addstr(0,0, "resizing works")
-
-            # h, w = screen.getmaxyx()
-            height,width = screen.getmaxyx()
-            window2.resize(height - 2 ,(width//2)-10)
-            window.resize(height - 2,(width//2) - 10)
+            height,width = stdscr.getmaxyx()
+            window2.resize(height, width)
+            window.resize(height, width)
             left_panel.replace(window)
-            right_panel.replace(window2)
             left_panel.move(0,0)
-            right_panel.move(0,width//2)
-            window2.border('|', '|', '-', '-', '+', '+', '+', '+')
-            window.border('|', '|', '-', '-', '+', '+', '+', '+')
-        if k == ord('q') or x >= 10:
+        if k == ord('q'): 
             running = False
             curses.endwin()
-        window2.addstr(1, 1, cores)
-        #window.addstr(1, 1, cores)
-        window.refresh()
-        window2.refresh()
         curses.panel.update_panels()
         curses.doupdate()
-
-
-    stdscr.clear() #clear the screen
-    stdscr.addstr(10, 2, "hello world") #row to place the string, column, string 
-    stdscr.addstr(20, 20, "middle of the screen")
-    stdscr.addstr(30, 30, "colors", curses.color_pair(1)) 
+        stdscr.refresh()
     pass
 
 
