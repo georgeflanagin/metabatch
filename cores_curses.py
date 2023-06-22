@@ -61,19 +61,42 @@ def get_mem_info() -> dict:
     #
     # spdr12 424105 768000 up 52 12/40/0/52
 
-
-    core_map_and_mem.append("Node   Core Usage                                            Used / Total Memory\n")
+    #core_map_and_mem.append("Node   Core Usage                                            Used / Total Memory\n")
     for line in ( _ for _ in data.stdout.split('\n')[1:] if _ ):
         node, free, total, status, true_cores, cores = line.split()
         cores = cores.split('/')
         used = (int(total) - int(free))/1000 # GB
-        
         core_map_and_mem.append(f"{node} {scaling.row(cores[0], true_cores)} {math.ceil(used)} / {math.ceil(int(total)/1000)}")
 
     return core_map_and_mem
 
 
+@trap
+def how_busy(n:str) -> int:
+    """
+    Returns 0-1, corresponding to the business of the node
+    """
+    data = SeekINFO()
+    busy_cores = 0
+    busy_mem = 0
+   
+    try: 
+        n = n.split()[0]
 
+        for line in ( _ for _ in data.stdout.split('\n')[1:] if _ ):
+            node, free, total, status, true_cores, cores = line.split()
+            if node == n:     
+                cores = cores.split('/')
+                busy_cores = int(cores[0])/int(true_cores)
+
+                mem_used = int(total) - int(free)
+                busy_mem = mem_used/int(total)
+                
+                break 
+    except:
+        pass
+
+    return max(busy_cores, busy_mem) #, cores[1], true_cores
 
 @trap
 def map_cores(stdscr: object) -> None:
@@ -90,6 +113,9 @@ def map_cores(stdscr: object) -> None:
     curses.init_pair(4, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
     curses.init_pair(5, curses.COLOR_GREEN, curses.COLOR_BLACK)
     curses.init_pair(6, curses.COLOR_BLACK, curses.COLOR_YELLOW)
+    curses.init_pair(7, curses.COLOR_YELLOW, curses.COLOR_BLACK)
+    curses.init_pair(8, curses.COLOR_WHITE, curses.COLOR_BLACK)
+    curses.init_pair(9, curses.COLOR_RED, curses.COLOR_BLACK)
 
     #way 2 to use the color, uses a variable assignment
     BLUE_AND_YELLOW = curses.color_pair(1) 
@@ -98,19 +124,16 @@ def map_cores(stdscr: object) -> None:
     MAGENTA_AND_BLACK = curses.color_pair(4)
     GREEN_AND_BLACK = curses.color_pair(5)
     BLACK_AND_YELLOW = curses.color_pair(6)
+    YELLOW_AND_BLACK = curses.color_pair(7)
+    WHITE_AND_BLACK = curses.color_pair(8)
+    RED_AND_BLACK = curses.color_pair(9)    
 
     stdscr.clear()
-    #stdscr.bkgd(' ',BLACK_AND_YELLOW)
-    #stdscr.refresh()
-    cores="\n".join(sorted(get_mem_info()))
-    cores += "\n\nPress q to exit"
-    #node, core_map, mem_used, mem_total = cores.split(' ')
     
-
     # resize window if needed
     height,width = stdscr.getmaxyx()
 
-    window2 = curses.newwin(0 ,0, 1,1)
+    window2 = curses.newwin(0,0, 1,1)
     
     left_panel = curses.panel.new_panel(window2)
 
@@ -123,11 +146,19 @@ def map_cores(stdscr: object) -> None:
         
         #display the cores map for each node
         try:
-            window2.addstr(0, 0, cores, GREEN_AND_BLACK)
-            window.refresh()
+            window2.addstr(0, 0,"Node   Core Usage                                            Used / Total Memory\n", WHITE_AND_BLACK)
+            for idx, node in enumerate(get_mem_info()):
+                if how_busy(node) >= 0.75: #if node is more than 75% full
+                    window2.addstr(idx+1, 0, node, RED_AND_BLACK)
+                    window2.refresh()
+                else:
+                    window2.addstr(idx+1, 0, node, GREEN_AND_BLACK)
+                    window2.refresh()
+            window2.addstr(len(get_mem_info())+1, 0, "Press q to quit", WHITE_AND_BLACK)
             window2.refresh()
-            
+                
         except:
+            window2.addstr("debug")
             window2.refresh()
             pass 
 

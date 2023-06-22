@@ -73,7 +73,7 @@ def draw_map() -> dict:
         used = int(total) - int(free)
         scale=scaling_values[int(total)]
         memory_map.append(f"{node} {scaling.row(used, total, scale)}")
-        core_map.append(f"{node} {scaling.row(cores[0], true_cores)}")
+        core_map.append(f"{node} {scaling.row(cores[1], true_cores)}")
 
     return {"memory":memory_map, "cores":core_map}
 
