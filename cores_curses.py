@@ -21,6 +21,7 @@ import contextlib
 import curses
 import curses.panel
 from curses import wrapper
+from datetime import datetime
 import getpass
 import time
 import math
@@ -56,17 +57,26 @@ def get_mem_info() -> dict:
     data = SeekINFO()
     memory_map = {}
     core_map_and_mem = []
-   
+    
+    padding = lambda times:' '*times   
+
     # We don't need the header row here is an example line:
     #
     # spdr12 424105 768000 up 52 12/40/0/52
 
+    cmd = "ssh -o ConnectTimeout=1 {} 'cat /proc/loadavg'"
+
     #core_map_and_mem.append("Node   Core Usage                                            Used / Total Memory\n")
     for line in ( _ for _ in data.stdout.split('\n')[1:] if _ ):
         node, free, total, status, true_cores, cores = line.split()
+        actually_used_cores = dorunrun(cmd.format(node), return_datatype = str)
+        #print(actually_used_cores[:5])
+
         cores = cores.split('/')
         used = (int(total) - int(free))/1000 # GB
-        core_map_and_mem.append(f"{node} {scaling.row(cores[0], true_cores)} {math.ceil(used)} / {math.ceil(int(total)/1000)}")
+        padd = padding(4-len(str(used)))
+        padd = str(used).ljust(10)
+        core_map_and_mem.append(f"{node} {scaling.row(cores[0], true_cores)} {str(math.ceil(used)).ljust(4)} / {str(math.ceil(int(total)/1000)).ljust(4)} | {actually_used_cores[:5]}")
 
     return core_map_and_mem
 
@@ -116,6 +126,7 @@ def map_cores(stdscr: object) -> None:
     curses.init_pair(7, curses.COLOR_YELLOW, curses.COLOR_BLACK)
     curses.init_pair(8, curses.COLOR_WHITE, curses.COLOR_BLACK)
     curses.init_pair(9, curses.COLOR_RED, curses.COLOR_BLACK)
+    curses.init_pair(10, curses.COLOR_BLACK, curses.COLOR_WHITE)
 
     #way 2 to use the color, uses a variable assignment
     BLUE_AND_YELLOW = curses.color_pair(1) 
@@ -127,14 +138,17 @@ def map_cores(stdscr: object) -> None:
     YELLOW_AND_BLACK = curses.color_pair(7)
     WHITE_AND_BLACK = curses.color_pair(8)
     RED_AND_BLACK = curses.color_pair(9)    
+    BLACK_AND_WHITE = curses.color_pair(10)
 
     stdscr.clear()
-    
+    stdscr.nodelay(1) 
+
     # resize window if needed
     height,width = stdscr.getmaxyx()
 
     window2 = curses.newwin(0,0, 1,1)
-    
+    window2.bkgd(' ', WHITE_AND_BLACK)
+    #window2.nodelay(1)    
     left_panel = curses.panel.new_panel(window2)
 
     curses.panel.update_panels()
@@ -143,45 +157,50 @@ def map_cores(stdscr: object) -> None:
     running = True
     x = 0
     while ( running  ):
-        
         #display the cores map for each node
         try:
-            window2.addstr(0, 0,"Node   Core Usage                                            Used / Total Memory\n", WHITE_AND_BLACK)
-            for idx, node in enumerate(get_mem_info()):
+            header = "Node".ljust(7)+"Cores Used\t\t\t\t\t"+"Memory Used / Total | "+"Cores Actually Used\n"
+            window2.addstr(0, 0, header, WHITE_AND_BLACK)
+            for idx, node in enumerate(sorted(get_mem_info())):
                 if how_busy(node) >= 0.75: #if node is more than 75% full
-                    window2.addstr(idx+1, 0, node, RED_AND_BLACK)
-                    window2.refresh()
+                    window2.addstr(idx+1, 0, node, YELLOW_AND_BLACK)
                 else:
                     window2.addstr(idx+1, 0, node, GREEN_AND_BLACK)
-                    window2.refresh()
-            window2.addstr(len(get_mem_info())+1, 0, "Press q to quit", WHITE_AND_BLACK)
-            window2.refresh()
-                
+            window2.addstr(len(get_mem_info())+1, 0, f'Last updated {datetime.now().strftime("%m/%d/%Y %H:%M:%S")}', WHITE_AND_BLACK)
+            window2.addstr(len(get_mem_info())+2, 0, "Press q to quit OR any other key to refresh.", WHITE_AND_BLACK)
+            window2.refresh()    
         except:
-            window2.addstr("debug")
-            window2.refresh()
+            #window2.addstr("debug")
+            #window2.refresh()
             pass 
-
+        
         #work around window resize
         k = window2.getch()
-        if k == curses.KEY_RESIZE:
-            
+        if k == curses.KEY_RESIZE:    
             height,width = stdscr.getmaxyx()
             window2.resize(height, width)
             left_panel.replace(window2)
             left_panel.move(0,0)
         if k == ord('q'): 
+            #break
             running = False
             curses.endwin()
+        
+
         curses.panel.update_panels()
         curses.doupdate()
         stdscr.refresh()
+        window2.refresh()
+        #if running == True:
+            #window2.timeout(5)
+        #time.sleep(10)
+        #running = True
+        #continue
     pass
-
-
 
 @trap
 def cores_curses_main(myargs:argparse.Namespace) -> int:
+    #wrapper(draw_menu)
     wrapper(map_cores)
     return os.EX_OK
 
